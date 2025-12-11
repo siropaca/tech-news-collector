@@ -24,6 +24,7 @@
 | `database` | データベース |
 | `programming` | プログラミング言語・一般 |
 | `business` | テック業界ニュース・ビジネス |
+| `tech_news` | 技術ニュース全般 |
 | `other` | その他 |
 
 ### content_language
@@ -124,6 +125,7 @@ CREATE TYPE article_category AS ENUM (
   'database',
   'programming',
   'business',
+  'tech_news',
   'other'
 );
 
@@ -173,4 +175,11 @@ CREATE INDEX idx_articles_fetched_at ON articles(fetched_at);
 CREATE INDEX idx_articles_category ON articles(category);
 CREATE INDEX idx_articles_published_at ON articles(published_at);
 CREATE INDEX idx_feed_sources_is_active ON feed_sources(is_active);
+```
+
+### tech_newsカテゴリ追加
+
+```sql
+-- enumにtech_newsを追加
+ALTER TYPE article_category ADD VALUE 'tech_news';
 ```
