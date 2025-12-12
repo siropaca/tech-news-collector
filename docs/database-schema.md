@@ -44,13 +44,13 @@ RSSフィードソースの管理テーブル。
 
 | カラム | 型 | NULL | デフォルト | 説明 |
 |--------|-----|------|------------|------|
-| `id` | UUID | NO | gen_random_uuid() | 主キー |
-| `name` | TEXT | NO | - | フィード名 |
-| `url` | TEXT | NO | - | フィードURL（UNIQUE） |
-| `default_category` | article_category | YES | - | デフォルトカテゴリ |
-| `is_active` | BOOLEAN | YES | true | 有効フラグ |
-| `created_at` | TIMESTAMPTZ | YES | now() | 作成日時 |
-| `updated_at` | TIMESTAMPTZ | YES | now() | 更新日時 |
+| `id` | UUID | NO | gen_random_uuid() | 主キー（UUID自動生成） |
+| `name` | TEXT | NO | - | フィード名（例: Publickey, web.dev） |
+| `url` | TEXT | NO | - | RSSフィードのURL（ユニーク制約あり） |
+| `default_category` | article_category | NO | 'other' | このフィードのデフォルトカテゴリ |
+| `is_active` | BOOLEAN | NO | true | 有効フラグ（falseの場合は収集対象外） |
+| `created_at` | TIMESTAMPTZ | NO | now() | レコード作成日時 |
+| `updated_at` | TIMESTAMPTZ | NO | now() | レコード更新日時 |
 
 ### articles
 
@@ -58,22 +58,22 @@ RSSフィードソースの管理テーブル。
 
 | カラム | 型 | NULL | デフォルト | 説明 |
 |--------|-----|------|------------|------|
-| `id` | UUID | NO | gen_random_uuid() | 主キー |
-| `feed_source_id` | UUID | YES | - | フィードソースID（FK） |
-| `guid` | TEXT | NO | - | RSSのguid（重複チェック用） |
-| `title` | TEXT | NO | - | 記事タイトル |
-| `url` | TEXT | NO | - | 記事URL |
-| `content` | TEXT | YES | - | 記事本文 |
-| `published_at` | TIMESTAMPTZ | YES | - | 公開日時 |
-| `fetched_at` | TIMESTAMPTZ | YES | now() | 取得日時 |
-| `category` | article_category | YES | - | カテゴリ（AI判定） |
-| `keywords` | TEXT[] | YES | - | キーワード（AI抽出） |
-| `summary` | TEXT | YES | - | 要約（AI生成、日本語） |
-| `original_language` | content_language | YES | 'ja' | 元の言語 |
-| `created_at` | TIMESTAMPTZ | YES | now() | 作成日時 |
+| `id` | UUID | NO | gen_random_uuid() | 主キー（UUID自動生成） |
+| `guid` | TEXT | NO | - | RSSのguid（重複チェック用、ユニーク制約あり） |
+| `title` | TEXT | NO | - | 表示用タイトル（常に日本語、英語記事は翻訳済み） |
+| `original_title` | TEXT | NO | '' | 元のタイトル（英語記事の場合のみ、日本語記事は空文字） |
+| `url` | TEXT | NO | - | 記事のURL |
+| `content` | TEXT | NO | - | 記事の本文（RSSから取得した内容） |
+| `published_at` | TIMESTAMPTZ | NO | - | 記事の公開日時 |
+| `fetched_at` | TIMESTAMPTZ | NO | now() | システムが記事を取得した日時 |
+| `category` | article_category | NO | - | AIが判定したカテゴリ |
+| `keywords` | TEXT[] | NO | '{}' | AIが抽出したキーワード（配列） |
+| `summary` | TEXT | NO | - | AIが生成した日本語要約（200〜300字） |
+| `original_language` | content_language | NO | 'ja' | 記事の元言語（ja: 日本語, en: 英語） |
+| `created_at` | TIMESTAMPTZ | NO | now() | レコード作成日時 |
 
 **制約**:
-- `UNIQUE(feed_source_id, guid)` - 同一フィード内でのguid重複を防止
+- `UNIQUE(guid)` - guid重複を防止
 
 ## インデックス
 
@@ -90,10 +90,10 @@ RSSフィードソースの管理テーブル。
 ┌─────────────────────┐       ┌─────────────────────────────┐
 │    feed_sources     │       │          articles           │
 ├─────────────────────┤       ├─────────────────────────────┤
-│ id (PK)             │──────<│ feed_source_id (FK)         │
-│ name                │       │ id (PK)                     │
-│ url (UNIQUE)        │       │ guid                        │
-│ default_category    │       │ title                       │
+│ id (PK)             │       │ id (PK)                     │
+│ name                │       │ guid (UNIQUE)               │
+│ url (UNIQUE)        │       │ title                       │
+│ default_category    │       │ original_title              │
 │ is_active           │       │ url                         │
 │ created_at          │       │ content                     │
 │ updated_at          │       │ published_at                │
@@ -103,83 +103,13 @@ RSSフィードソースの管理テーブル。
                               │ summary                     │
                               │ original_language           │
                               │ created_at                  │
-                              ├─────────────────────────────┤
-                              │ UNIQUE(feed_source_id, guid)│
                               └─────────────────────────────┘
 ```
 
-## マイグレーション
+## 登録済みフィードソース
 
-### 初期スキーマ作成
-
-```sql
--- カテゴリのenum型
-CREATE TYPE article_category AS ENUM (
-  'ai_ml',
-  'web_frontend', 
-  'web_backend',
-  'infrastructure',
-  'security',
-  'devops',
-  'mobile',
-  'database',
-  'programming',
-  'business',
-  'tech_news',
-  'other'
-);
-
--- 言語のenum型
-CREATE TYPE content_language AS ENUM (
-  'ja',
-  'en'
-);
-
--- RSSフィードソース
-CREATE TABLE feed_sources (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  url TEXT NOT NULL UNIQUE,
-  default_category article_category,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 収集した記事
-CREATE TABLE articles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  feed_source_id UUID REFERENCES feed_sources(id),
-  
-  -- 記事の基本情報
-  guid TEXT NOT NULL,
-  title TEXT NOT NULL,
-  url TEXT NOT NULL,
-  content TEXT,
-  published_at TIMESTAMPTZ,
-  fetched_at TIMESTAMPTZ DEFAULT now(),
-  
-  -- AI処理結果
-  category article_category,
-  keywords TEXT[],
-  summary TEXT,
-  original_language content_language DEFAULT 'ja',
-  
-  created_at TIMESTAMPTZ DEFAULT now(),
-  
-  UNIQUE(feed_source_id, guid)
-);
-
--- インデックス
-CREATE INDEX idx_articles_fetched_at ON articles(fetched_at);
-CREATE INDEX idx_articles_category ON articles(category);
-CREATE INDEX idx_articles_published_at ON articles(published_at);
-CREATE INDEX idx_feed_sources_is_active ON feed_sources(is_active);
-```
-
-### tech_newsカテゴリ追加
-
-```sql
--- enumにtech_newsを追加
-ALTER TYPE article_category ADD VALUE 'tech_news';
-```
+| 名前 | URL | カテゴリ | is_active |
+|------|-----|---------|-----------|
+| Publickey | https://www.publickey1.jp/atom.xml | tech_news | true |
+| web.dev | https://web.dev/static/blog/feed.xml | web_frontend | true |
+| Chrome for Developers | https://developer.chrome.com/static/blog/feed.xml | web_frontend | false |
