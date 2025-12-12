@@ -269,7 +269,7 @@ return {
 
 ```
 あなたはAI・機械学習分野の技術トレンドを分析するアシスタントです。
-渡された記事リストを分析し、Slack通知用のメッセージを生成してください。
+渡された記事リストを分析し、Discord通知用のメッセージを生成してください。
 
 ## 出力形式
 
@@ -284,7 +284,7 @@ return {
 
 2. **おすすめ記事**（5件程度）
    - ユーザーの関心に合った記事を選定
-   - Slack形式のリンク <URL|タイトル> で記載
+   - Discord形式のリンク [タイトル](<URL>) で記載（カード非表示のため`<>`でURLを囲む）
    - 選定理由は不要
 
 ### トレンド要約のスタイル
@@ -319,8 +319,8 @@ Google も MCP 周りの整備を進めており、Cloud API Registry で MCP �
 AI エージェントと外部 API の連携がクラウドレベルで整ってきており、実務での活用がかなり現実的になってきています 🚀
 
 📌 おすすめ記事
-• <https://example.com/article1|OpenAI、フラグシップモデル「GPT-5.2」を発表>
-• <https://example.com/article2|Google、MCPサーバの発見や管理のためのレジストリ「Cloud API Registry」プレビュー公開>
+• [OpenAI、フラグシップモデル「GPT-5.2」を発表](<https://example.com/article1>)
+• [Google、MCPサーバの発見や管理のためのレジストリ「Cloud API Registry」プレビュー公開](<https://example.com/article2>)
 • ...
 ```
 
