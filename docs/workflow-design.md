@@ -2,14 +2,14 @@
 
 ## ワークフロー一覧
 
-| ワークフロー名 | 実行間隔 | 目的 |
-|----------------|----------|------|
-| インプットWF | 1時間ごと | RSS収集・分類・保存 |
-| アウトプットWF | 6時間ごと | 記事選定・要約・配信 |
+| ワークフロー名 | ID | 実行間隔 | ステータス | 目的 |
+|----------------|-----|----------|----------|------|
+| Tech News Collector - Read RSS | `Haf7eC6SXFeqyX0K` | 1時間ごと | アクティブ | RSS収集・サブWF呼び出し |
+| Tech News Collector - Process Articles | `8M3Ib9Rx0kcznelb` | - | 非アクティブ | 記事処理・AI分析・保存 |
 
 ---
 
-## インプットワークフロー
+## Tech News Collector - Read RSS（メインワークフロー）
 
 ### フロー図
 
@@ -17,187 +17,199 @@
 [Schedule Trigger: 1時間ごと]
     │
     ▼
-[Supabase: アクティブなfeed_sources取得]
+[Get Feed Sources: Supabaseからアクティブなフィード取得]
     │
     ▼
-[Loop: 各フィードに対して]
+[Loop Feeds: 各フィードをループ]
     │
-    ├─► [HTTP Request: RSS取得]
-    │       │
-    │       ▼
-    │   [XML Parser: パース]
-    │       │
-    │       ▼
-    │   [Loop: 各記事に対して]
-    │       │
-    │       ├─► [Supabase: 重複チェック (guidで)]
-    │       │       │
-    │       │       ▼
-    │       │   [IF: 新規記事のみ続行]
-    │       │       │
-    │       │       ▼
-    │       │   [OpenAI: カテゴリ判定・キーワード抽出・要約・翻訳]
-    │       │       │
-    │       │       ▼
-    │       │   [Supabase: 記事保存]
-    │       │
-    │       └─► [次の記事へ]
+    ├─► (ループ完了) ─► [Send a message: Slack完了通知]
     │
-    └─► [次のフィードへ]
+    └─► [Read RSS: RSSフィード取得・パース]
+            │
+            ▼
+        [Process Articles: サブワークフロー呼び出し]
+            │
+            └─► [Loop Feedsに戻る]
 ```
 
 ### ノード詳細
 
-#### 1. Schedule Trigger
-- **設定**: 1時間ごとに実行
-- **Cron**: `0 * * * *`
-
-#### 2. Supabase: フィードソース取得
-```sql
-SELECT * FROM feed_sources WHERE is_active = true
-```
-
-#### 3. HTTP Request: RSS取得
-- **Method**: GET
-- **URL**: `{{ $json.url }}`（feed_sourcesから）
-
-#### 4. XML Parser
-- RSSフィードをJSONにパース
-
-#### 5. Supabase: 重複チェック
-```sql
-SELECT id FROM articles 
-WHERE feed_source_id = '{{ feed_source_id }}' 
-  AND guid = '{{ item.guid }}'
-```
-
-#### 6. OpenAI: AI処理
-
-**プロンプト例**:
-```
-以下の記事を分析してください。
-
-【タイトル】
-{{ title }}
-
-【本文】
-{{ content }}
-
-以下の形式でJSONを返してください：
-{
-  "category": "カテゴリ（ai_ml, web_frontend, web_backend, infrastructure, security, devops, mobile, database, programming, business, otherのいずれか）",
-  "keywords": ["キーワード1", "キーワード2", "キーワード3"],
-  "summary": "日本語での要約（100文字程度）",
-  "original_language": "ja または en"
-}
-```
-
-#### 7. Supabase: 記事保存
-```sql
-INSERT INTO articles (
-  feed_source_id, guid, title, url, content, 
-  published_at, category, keywords, summary, original_language
-) VALUES (...)
-```
+| ノード名 | タイプ | 説明 |
+|----------|--------|------|
+| Schedule Trigger | scheduleTrigger | 1時間ごとに実行 |
+| Get Feed Sources | supabase | `feed_sources`から`is_active=true`のレコードを取得 |
+| Loop Feeds | splitInBatches | フィードを1件ずつループ処理 |
+| Read RSS | rssFeedRead | 各フィードのURLからRSSを取得 |
+| Process Articles | executeWorkflow | サブワークフローを呼び出し |
+| Send a message | slack | 完了通知をSlackに送信 |
 
 ---
 
-## アウトプットワークフロー
+## Tech News Collector - Process Articles（サブワークフロー）
 
 ### フロー図
 
 ```
-[Schedule Trigger: 6時間ごと]
+[Execute Workflow Trigger: 記事データを受け取る]
     │
     ▼
-[Supabase: 過去6時間の記事取得]
+[Loop Over Items: 記事を1件ずつループ]
     │
-    ▼
-[Code: スコアリング・ソート]
+    ├─► (ループ完了) ─► [Finished]
     │
-    ▼
-[Code: 上位N件を抽出]
-    │
-    ▼
-[OpenAI: まとめ要約を生成]
-    │
-    ▼
-[Slack: 通知送信]
+    └─► [Format Input: データ正規化]
+            │
+            ▼
+        [Check Duplicate: Supabaseで重複チェック]
+            │
+            ▼
+        [If Exists: 重複判定]
+            │
+            ├─► (既存) ─► [Skip] ─► [Loop Over Itemsに戻る]
+            │
+            └─► (新規) ─► [Get Original Data: 元データ取得]
+                            │
+                            ▼
+                        [AI Process: GPT-5.1で分析]
+                            │
+                            ▼
+                        [Build Article Data: 保存用データ構築]
+                            │
+                            ▼
+                        [Save Article: Supabaseに保存]
+                            │
+                            └─► [Loop Over Itemsに戻る]
 ```
 
 ### ノード詳細
 
-#### 1. Schedule Trigger
-- **設定**: 6時間ごとに実行
-- **Cron**: `0 */6 * * *`
+| ノード名 | タイプ | 説明 |
+|----------|--------|------|
+| Execute Workflow Trigger | executeWorkflowTrigger | サブWFの起点（passthrough mode） |
+| Loop Over Items | splitInBatches | 記事を1件ずつループ処理 |
+| Format Input | code | RSSデータを正規化（guid, title, url, content, published_at） |
+| Check Duplicate | supabase | `articles`テーブルでguidの重複をチェック |
+| If Exists | if | 重複判定（guidが存在するか） |
+| Skip (Already Exists) | noOp | 重複記事をスキップ |
+| Get Original Data | code | Format Inputの元データを取得 |
+| AI Process | openAi | GPT-5.1で記事を分析 |
+| Build Article Data | code | AI結果と元データを結合して保存用データを構築 |
+| Save Article | supabase | `articles`テーブルに保存 |
 
-#### 2. Supabase: 記事取得
-```sql
-SELECT * FROM articles 
-WHERE fetched_at > NOW() - INTERVAL '6 hours'
-ORDER BY published_at DESC
-```
+---
 
-#### 3. スコアリング（Code Node）
+## Format Input（コード）
+
+RSSフィードのアイテムを正規化するコード。
 
 ```javascript
-// importance_score の算出例
-const now = new Date();
+const item = $input.item.json;
 
-for (const item of items) {
-  let score = 0;
-  
-  // 新しさ
-  const publishedAt = new Date(item.json.published_at);
-  const hoursAgo = (now - publishedAt) / (1000 * 60 * 60);
-  if (hoursAgo < 24) score += 30;
-  else if (hoursAgo < 48) score += 15;
-  
-  // キーワードマッチ（注目キーワード）
-  const hotKeywords = ['AI', 'ChatGPT', 'LLM', 'セキュリティ', '脆弱性'];
-  const keywords = item.json.keywords || [];
-  for (const kw of keywords) {
-    if (hotKeywords.some(hot => kw.includes(hot))) {
-      score += 10;
-    }
-  }
-  
-  item.json.importance_score = score;
+return {
+  guid: item.guid || item.id || item.link,
+  title: item.title,
+  url: item.link,
+  content: item.content || item.contentSnippet || item.summary || item.description || '',
+  published_at: item.isoDate || item.pubDate
+};
+```
+
+---
+
+## AI Process（システムプロンプト）
+
+```
+あなたは技術記事を分析するアシスタントです。
+渡された記事情報を分析し、指定されたJSON形式で結果を返してください。
+
+## 分析タスク
+
+1. **title（タイトル）**: 日本語のタイトル（英語の場合は翻訳）
+2. **category（カテゴリ）**: 記事の内容に最も適したカテゴリを1つ選択
+3. **keywords（キーワード）**: 記事の重要なキーワードを3〜5個抽出
+4. **summary（要約）**: 記事の要点を日本語で要約
+5. **original_language（元言語）**: 記事の元の言語を判定
+
+## タイトルのルール
+
+- 日本語記事: 元のタイトルをそのまま使用
+- 英語記事: 日本語に翻訳（固有名詞・サービス名・技術用語は英語のまま維持）
+
+## カテゴリ一覧（必ずこの中から選択）
+
+- ai_ml: AI・機械学習・LLM関連
+- web_frontend: Webフロントエンド（React, Vue, CSS等）
+- web_backend: Webバックエンド（API, サーバーサイド等）
+- infrastructure: インフラ・クラウド（AWS, GCP, Azure, Kubernetes等）
+- security: セキュリティ・脆弱性
+- devops: DevOps・CI/CD・自動化
+- mobile: モバイルアプリ開発（iOS, Android, Flutter等）
+- database: データベース（SQL, NoSQL等）
+- programming: プログラミング言語・開発手法一般
+- business: テック業界ニュース・企業動向・買収等
+- tech_news: 複数分野にまたがる技術ニュース
+- other: 上記に該当しないもの
+
+## 言語一覧（必ずこの中から選択）
+
+- ja: 日本語
+- en: 英語
+
+## 要約のルール
+
+- 日本語で200〜300字で作成
+- 追加の推測や脚色は禁止（記事に書かれている事実のみ）
+- 重要な数値・比較・結論は必ず残す
+- 一段落で出力（箇条書き禁止）
+- 具体的なソースコードやコマンドは記載禁止
+- ですます調で統一（例：〜いる→〜います、〜だ→〜です）
+- 「この記事では」「この記事は」「本記事では」などのメタ表現で始めない
+- 主語（企業名、サービス名、技術名など）から直接書き始める
+
+## 出力形式
+
+以下のJSON形式のみを出力してください。説明文やマークダウンの装飾は不要です。
+
+{
+  "title": "日本語タイトル",
+  "category": "カテゴリ値",
+  "keywords": ["キーワード1", "キーワード2", "キーワード3"],
+  "summary": "日本語での要約文",
+  "original_language": "言語コード"
 }
-
-return items.sort((a, b) => b.json.importance_score - a.json.importance_score);
 ```
 
-#### 4. OpenAI: まとめ要約
+---
 
-**プロンプト例**:
-```
-以下の記事リストを元に、技術トレンドのダイジェストを作成してください。
+## Build Article Data（コード）
 
-【記事リスト】
-{{ articles }}
+AI処理結果と元データを結合して保存用データを構築するコード。
 
-以下の形式で出力してください：
-- 全体の傾向（2-3文）
-- 注目トピック（箇条書き3-5件）
-```
+```javascript
+// Format Inputのデータを取得
+const formatInput = $('Format Input').item.json;
 
-#### 5. Slack: 通知送信
+// AI Processの出力からテキストを取得してパース
+const aiOutput = $input.item.json.output[0].content[0].text;
+const aiResult = JSON.parse(aiOutput);
 
-**メッセージフォーマット（Phase 1: シンプル版）**:
-```
-📰 技術ニュースダイジェスト
-
-【注目記事】
-1. {{ title1 }}
-   {{ summary1 }}
-   {{ url1 }}
-
-2. {{ title2 }}
-   {{ summary2 }}
-   {{ url2 }}
-
-...
+return {
+  json: {
+    // Format Inputからの基本情報
+    guid: formatInput.guid,
+    original_title: formatInput.title,
+    url: formatInput.url,
+    content: formatInput.content,
+    published_at: formatInput.published_at,
+    
+    // AI Processからの分析結果
+    title: aiResult.title,
+    category: aiResult.category,
+    keywords: aiResult.keywords,
+    summary: aiResult.summary,
+    original_language: aiResult.original_language
+  }
+};
 ```
 
 ---
@@ -206,21 +218,28 @@ return items.sort((a, b) => b.json.importance_score - a.json.importance_score);
 
 | 項目 | 値 | 備考 |
 |------|-----|------|
-| インプット実行間隔 | 1時間 | 調整可能 |
-| アウトプット実行間隔 | 6時間 | 調整可能 |
-| 配信記事数 | 5-10件 | スコア上位 |
-| 要約文字数 | 100文字程度 | AI生成 |
+| 実行間隔 | 1時間 | Schedule Trigger |
+| AIモデル | GPT-5.1 | OpenAI |
+| 要約文字数 | 200〜300字 | AI生成 |
+| キーワード数 | 3〜5個 | AI抽出 |
 
 ---
 
 ## エラーハンドリング
 
-### インプットWF
+### Read RSS WF
 - **RSS取得失敗**: スキップして次のフィードへ
-- **パースエラー**: スキップして次の記事へ
-- **AI APIエラー**: リトライ（最大3回）
-- **DB保存エラー**: ログ出力、アラート
+- **サブWF呼び出し失敗**: ログ出力
 
-### アウトプットWF
-- **記事0件**: 配信スキップ（または「新着なし」通知）
-- **Slack送信失敗**: リトライ（最大3回）
+### Process Articles WF
+- **重複記事**: スキップしてループ継続
+- **AI APIエラー**: ワークフロー停止（要改善）
+- **DB保存エラー**: ワークフロー停止（要改善）
+
+---
+
+## 今後の改善予定
+
+- [ ] エラーハンドリングの強化（リトライ機構）
+- [ ] アウトプットワークフローの実装（定期配信）
+- [ ] スコアリング機能の追加
