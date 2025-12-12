@@ -22,6 +22,7 @@
 | `mobile` | モバイル開発 |
 | `database` | データベース |
 | `programming` | プログラミング言語・一般 |
+| `technology` | ハードウェア・ガジェット・新技術 |
 | `business` | テック業界ニュース・ビジネス |
 | `tech_news` | 技術ニュース全般 |
 | `tech_blog` | 技術ブログ |
