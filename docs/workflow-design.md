@@ -6,7 +6,7 @@
 |----------------|----------|------|
 | Tech News Collector - Fetch RSS | 定期実行 | RSS収集・サブWF呼び出し |
 | Tech News Collector - Process RSS Articles | - | 記事処理・AI分析・保存 |
-| Tech News Collector - Send Slack (ai_ml) | 定期実行 | AI/ML記事のSlack配信 |
+| Tech News Collector - Send Slack (*) | 定期実行 | カテゴリ別記事配信 |
 
 ---
 
@@ -38,7 +38,7 @@
 | Fetch RSS Feed | rssFeedRead | 各フィードのURLからRSSを取得 |
 | Add Feed Info | code | フィードソースIDを各記事に付与 |
 | Process RSS Articles (SubWF) | executeWorkflow | サブワークフローを呼び出し |
-| Notify Completion | slack | 完了通知をSlackに送信 |
+| Notify Completion | - | 完了通知を送信 |
 
 ---
 
@@ -91,7 +91,7 @@
 
 ---
 
-## Tech News Collector - Send Slack (ai_ml)（配信ワークフロー）
+## Tech News Collector - Send Slack (*)（配信ワークフロー）
 
 ### フロー図
 
@@ -99,14 +99,14 @@
 [Schedule Trigger]
     │
     ▼
-[Get ai_ml Articles]
+[Get Articles]
     │
     ▼
 [Has Articles?]
     │
     ├─► (no) ─► [No Articles (Skip)]
     │
-    └─► (yes) ─► [Extract Article Fields] → [Aggregate Articles] → [Generate Slack Message] → [Send to Slack]
+    └─► (yes) ─► [Extract Article Fields] → [Aggregate Articles] → [Generate Message] → [Send Message]
                                                                           │
                                                                    [OpenAI Chat Model]
 ```
@@ -116,13 +116,13 @@
 | ノード名 | タイプ | 説明 |
 |----------|--------|------|
 | Schedule Trigger | scheduleTrigger | 定期実行 |
-| Get ai_ml Articles | supabase | 直近のAI/ML記事を取得 |
+| Get Articles | supabase | 直近のカテゴリ別記事を取得 |
 | Has Articles? | if | 記事が存在するか判定 |
 | Extract Article Fields | splitOut | 必要なフィールドのみ抽出 |
 | Aggregate Articles | aggregate | 全記事を1つのリストに集約 |
-| Generate Slack Message | agent | AIでトレンド要約・おすすめ記事を生成 |
+| Generate Message | agent | AIでトレンド要約・おすすめ記事を生成 |
 | OpenAI Chat Model | lmChatOpenAi | GPT-5.1モデル |
-| Send to Slack | slack | Slackにメッセージ送信 |
+| Send Message | - | 配信先にメッセージ送信 |
 | No Articles (Skip) | noOp | 記事がない場合はスキップ |
 
 ### Supabaseフィルタ設定
@@ -130,10 +130,10 @@
 配列型カラムのフィルタには `cs`（contains）演算子を使用：
 
 ```
-category=cs.{ai_ml}&fetched_at=gte.{{ $now.minus({hours: N}).toUTC().toISO() }}
+category=cs.{カテゴリ名}&fetched_at=gte.{{ $now.minus({hours: N}).toUTC().toISO() }}
 ```
 
-- `cs.{ai_ml}`: category配列に`ai_ml`が含まれる
+- `cs.{カテゴリ名}`: category配列に指定カテゴリが含まれる
 - `gte`: 以上（greater than or equal）
 - `.toUTC().toISO()`: タイムゾーン問題を回避するためUTC形式で出力
 - `N`: 実行間隔に合わせて調整
@@ -266,11 +266,13 @@ return {
 
 ---
 
-## Generate Slack Message（システムプロンプト）
+## Generate Message（システムプロンプト）
+
+カテゴリに応じてシステムプロンプトを調整してください。以下はai_mlカテゴリの例です。
 
 ```
 あなたはAI・機械学習分野の技術トレンドを分析するアシスタントです。
-渡された記事リストを分析し、Discord通知用のメッセージを生成してください。
+渡された記事リストを分析し、通知用のメッセージを生成してください。
 
 ## 出力形式
 
@@ -327,6 +329,8 @@ AI エージェントと外部 API の連携がクラウドレベルで整って
 
 ### ユーザープロンプト
 
+カテゴリに応じてユーザーの関心を調整してください。以下はai_mlカテゴリの例です。
+
 ```
 以下の記事リストを分析してください。
 
@@ -346,9 +350,9 @@ AI エージェントと外部 API の連携がクラウドレベルで整って
 | 項目 | 値 | 備考 |
 |------|-----|------|
 | RSS収集間隔 | 定期実行 | Fetch RSS |
-| 配信間隔 | 定期実行 | Send Slack |
+| 配信間隔 | 定期実行 | Send |
 | AIモデル（記事分析） | OpenAI GPT-5.1 | Process RSS Articles |
-| AIモデル（配信生成） | OpenAI GPT-5.1 | Send Slack |
+| AIモデル（配信生成） | OpenAI GPT-5.1 | Send |
 | 要約文字数 | 200〜300字 | AI生成 |
 | キーワード数 | 3〜5個 | AI抽出 |
 | カテゴリ数 | 1〜3個 | AI判定 |
@@ -366,6 +370,6 @@ AI エージェントと外部 API の連携がクラウドレベルで整って
 - **AI APIエラー**: ワークフロー停止（要改善）
 - **DB保存エラー**: ワークフロー停止（要改善）
 
-### Send Slack WF
+### Send WF
 - **記事なし**: スキップ（No Articles）
 - **AI APIエラー**: ワークフロー停止（要改善）
