@@ -2,11 +2,11 @@
 
 ## ワークフロー一覧
 
-| ワークフロー名 | 実行間隔 | 目的 | ステータス |
-|----------------|----------|------|------------|
-| Tech News Collector - Fetch RSS | 1時間ごと | RSS収集・サブWF呼び出し | アクティブ |
-| Tech News Collector - Process RSS Articles | - | 記事処理・AI分析・保存 | サブWF |
-| Tech News Collector - Send Slack (ai_ml) | 3時間ごと | AI/ML記事のSlack配信 | 設定中 |
+| ワークフロー名 | 実行間隔 | 目的 |
+|----------------|----------|------|
+| Tech News Collector - Fetch RSS | 1時間ごと | RSS収集・サブWF呼び出し |
+| Tech News Collector - Process RSS Articles | - | 記事処理・AI分析・保存 |
+| Tech News Collector - Send Slack (ai_ml) | 3時間ごと | AI/ML記事のSlack配信 |
 
 ---
 
