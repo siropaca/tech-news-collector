@@ -24,6 +24,7 @@
 | `programming` | プログラミング言語・一般 |
 | `business` | テック業界ニュース・ビジネス |
 | `tech_news` | 技術ニュース全般 |
+| `tech_blog` | 技術ブログ |
 | `other` | その他 |
 
 ### content_language
