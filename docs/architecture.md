@@ -31,7 +31,7 @@
 │  ┌──────────────┐                     ▼                        │
 │  │Read RSS      │            ┌──────────────────┐              │
 │  └──────┬───────┘            │AI Process        │              │
-│         ▼                    │(GPT-5.1)         │              │
+│         ▼                    │(OpenAI)          │              │
 │  ┌──────────────┐            │・カテゴリ判定     │              │
 │  │Process       │──────────► │・キーワード抽出   │              │
 │  │Articles      │            │・要約生成        │              │
@@ -58,7 +58,6 @@
 ### n8n Workflows
 
 #### Tech News Collector - Read RSS（メインワークフロー）
-- **ワークフローID**: `Haf7eC6SXFeqyX0K`
 - **実行間隔**: 1時間ごと
 - **ステータス**: アクティブ
 - **処理内容**:
@@ -69,22 +68,19 @@
   5. 完了後Slackに通知
 
 #### Tech News Collector - Process Articles（サブワークフロー）
-- **ワークフローID**: `8M3Ib9Rx0kcznelb`
 - **呼び出し元**: Read RSS
 - **ステータス**: 非アクティブ（サブワークフローのため）
 - **処理内容**:
   1. 記事データを正規化（Format Input）
   2. 重複チェック（guidベース）
-  3. GPT-5.1でカテゴリ判定・キーワード抽出・要約・タイトル翻訳
+  3. OpenAI でカテゴリ判定・キーワード抽出・要約・タイトル翻訳
   4. Supabaseに保存
 
 ### Supabase
 - **用途**: データベース（PostgreSQL）
 - **リージョン**: ap-northeast-1（東京）
-- **プロジェクト名**: tech-news-collector
-- **プロジェクトID**: `vpcpxosutscbjmwvbchi`
 
-### AI (OpenAI GPT-5.1)
+### AI (OpenAI)
 - **用途**:
   - カテゴリ自動分類（12種類）
   - キーワード抽出（3〜5個）
