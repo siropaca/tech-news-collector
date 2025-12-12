@@ -2,10 +2,10 @@
 
 ## ワークフロー一覧
 
-| ワークフロー名 | 実行間隔 | ステータス | 目的 |
+| ワークフロー名 | 実行間隔 | 目的 |
 |----------------|----------|----------|------|
-| Tech News Collector - Read RSS | 1時間ごと | アクティブ | RSS収集・サブWF呼び出し |
-| Tech News Collector - Process Articles | - | 非アクティブ | 記事処理・AI分析・保存 |
+| Tech News Collector - Read RSS | 1時間ごと | RSS収集・サブWF呼び出し |
+| Tech News Collector - Process Articles | - | 記事処理・AI分析・保存 |
 
 ---
 
