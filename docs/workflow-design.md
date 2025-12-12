@@ -190,6 +190,8 @@ return {
 - database: データベース（SQL, NoSQL等）
 - programming: プログラミング言語・開発手法一般
 - technology: ハードウェア・ガジェット・新技術（CPU, GPU, デバイス, 量子コンピュータ等）
+- ui_ux: UI/UXデザイン・ユーザビリティ・アクセシビリティ
+- design: グラフィックデザイン・デザインツール・デザインシステム
 - business: テック業界ニュース・企業動向・買収等
 - tech_news: 複数分野にまたがる技術ニュース
 - tech_blog: 技術ブログ
