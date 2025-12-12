@@ -58,6 +58,7 @@ RSSフィードソースの管理テーブル。
 | カラム | 型 | NULL | デフォルト | 説明 |
 |--------|-----|------|------------|------|
 | `id` | UUID | NO | gen_random_uuid() | 主キー（UUID自動生成） |
+| `feed_source_id` | UUID | YES | - | 記事の取得元フィードソース（FK: feed_sources.id） |
 | `guid` | TEXT | NO | - | RSSのguid（重複チェック用、ユニーク制約あり） |
 | `title` | TEXT | NO | - | 表示用タイトル（常に日本語、英語記事は翻訳済み） |
 | `original_title` | TEXT | NO | '' | 元のタイトル（英語記事の場合のみ、日本語記事は空文字） |
@@ -73,6 +74,7 @@ RSSフィードソースの管理テーブル。
 
 **制約**:
 - `UNIQUE(guid)` - guid重複を防止
+- `FOREIGN KEY(feed_source_id)` - feed_sources.id を参照（削除時は NULL に設定）
 
 ## インデックス
 
@@ -81,6 +83,7 @@ RSSフィードソースの管理テーブル。
 | `idx_articles_fetched_at` | articles | fetched_at |
 | `idx_articles_category` | articles | category |
 | `idx_articles_published_at` | articles | published_at |
+| `idx_articles_feed_source_id` | articles | feed_source_id |
 | `idx_feed_sources_is_active` | feed_sources | is_active |
 
 ## ER図
@@ -89,18 +92,21 @@ RSSフィードソースの管理テーブル。
 ┌─────────────────────┐       ┌─────────────────────────────┐
 │    feed_sources     │       │          articles           │
 ├─────────────────────┤       ├─────────────────────────────┤
-│ id (PK)             │       │ id (PK)                     │
-│ name                │       │ guid (UNIQUE)               │
-│ url (UNIQUE)        │       │ title                       │
-│ default_category    │       │ original_title              │
-│ is_active           │       │ url                         │
-│ created_at          │       │ content                     │
-│ updated_at          │       │ published_at                │
-└─────────────────────┘       │ fetched_at                  │
-                              │ category                    │
-                              │ keywords[]                  │
-                              │ summary                     │
-                              │ original_language           │
-                              │ created_at                  │
-                              └─────────────────────────────┘
+│ id (PK)             │◄──┐   │ id (PK)                     │
+│ name                │   │   │ feed_source_id (FK) ────────┘
+│ url (UNIQUE)        │   │   │ guid (UNIQUE)               │
+│ default_category    │   │   │ title                       │
+│ is_active           │   │   │ original_title              │
+│ created_at          │   │   │ url                         │
+│ updated_at          │   │   │ content                     │
+└─────────────────────┘   │   │ published_at                │
+                          │   │ fetched_at                  │
+                          │   │ category                    │
+                          │   │ keywords[]                  │
+                          │   │ summary                     │
+                          │   │ original_language           │
+                          │   │ created_at                  │
+                          │   └─────────────────────────────┘
+                          │
+                     1:N (nullable)
 ```
