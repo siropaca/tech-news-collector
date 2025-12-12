@@ -87,7 +87,7 @@
 |----------|--------|------|
 | Execute Workflow Trigger | executeWorkflowTrigger | サブWFの起点（passthrough mode） |
 | Loop Over Items | splitInBatches | 記事を1件ずつループ処理 |
-| Format Input | code | RSSデータを正規化（guid, title, url, content, published_at） |
+| Format Input | code | RSSデータを正規化（guid, title, url, content, published_at, feed_source_id） |
 | Check Duplicate | supabase | `articles`テーブルでguidの重複をチェック |
 | If Exists | if | 重複判定（guidが存在するか） |
 | Skip (Already Exists) | noOp | 重複記事をスキップ |
@@ -106,6 +106,7 @@ RSSフィードのアイテムを正規化するコード。
 const item = $input.item.json;
 
 return {
+  feed_source_id: item.feed_source_id,
   guid: item.guid || item.id || item.link,
   title: item.title,
   url: item.link,
@@ -196,6 +197,7 @@ const aiResult = JSON.parse(aiOutput);
 return {
   json: {
     // Format Inputからの基本情報
+    feed_source_id: formatInput.feed_source_id,
     guid: formatInput.guid,
     original_title: formatInput.title,
     url: formatInput.url,
