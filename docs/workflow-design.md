@@ -181,8 +181,8 @@ return {
 ## カテゴリ一覧（必ずこの中から選択）
 
 - ai_ml: AI・機械学習・LLM関連
-- web_frontend: Webフロントエンド（React, Vue, CSS等）
-- web_backend: Webバックエンド（API, サーバーサイド等）
+- frontend: フロントエンド（React, Vue, CSS等）
+- backend: バックエンド（API, サーバーサイド等）
 - infrastructure: インフラ・クラウド（AWS, GCP, Azure, Kubernetes等）
 - security: セキュリティ・脆弱性
 - devops: DevOps・CI/CD・自動化
