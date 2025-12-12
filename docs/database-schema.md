@@ -3,7 +3,6 @@
 ## 概要
 
 - **データベース**: Supabase (PostgreSQL)
-- **プロジェクトID**: `vpcpxosutscbjmwvbchi`
 - **リージョン**: ap-northeast-1
 
 ## Enum型
