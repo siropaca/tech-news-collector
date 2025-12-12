@@ -23,6 +23,8 @@
 | `database` | データベース |
 | `programming` | プログラミング言語・一般 |
 | `technology` | ハードウェア・ガジェット・新技術 |
+| `ui_ux` | UI/UXデザイン・ユーザビリティ |
+| `design` | グラフィックデザイン・デザインツール |
 | `business` | テック業界ニュース・ビジネス |
 | `tech_news` | 技術ニュース全般 |
 | `tech_blog` | 技術ブログ |
