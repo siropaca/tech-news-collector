@@ -104,11 +104,3 @@ RSSフィードソースの管理テーブル。
                               │ created_at                  │
                               └─────────────────────────────┘
 ```
-
-## 登録済みフィードソース
-
-| 名前 | URL | カテゴリ | is_active |
-|------|-----|---------|-----------|
-| Publickey | https://www.publickey1.jp/atom.xml | tech_news | true |
-| web.dev | https://web.dev/static/blog/feed.xml | web_frontend | true |
-| Chrome for Developers | https://developer.chrome.com/static/blog/feed.xml | web_frontend | false |
