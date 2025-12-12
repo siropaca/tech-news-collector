@@ -1,0 +1,255 @@
+{
+  "name": "Tech News Collector - Read RSS",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        -48,
+        16
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "feed_sources",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "is_active",
+              "condition": "is",
+              "keyValue": "true"
+            }
+          ]
+        }
+      },
+      "id": "getFeedSources",
+      "name": "Get Feed Sources",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        208,
+        16
+      ],
+      "typeVersion": 1,
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "yQ0CqMPOCVAm94Em",
+          "name": "tech-news-collector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "loopFeeds",
+      "name": "Loop Feeds",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        448,
+        16
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "readRss",
+      "name": "Read RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "position": [
+        672,
+        32
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8M3Ib9Rx0kcznelb",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8M3Ib9Rx0kcznelb",
+          "cachedResultName": "Tech News Collector - Process Articles"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "executeSubWorkflow",
+      "name": "Process Articles",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        1104,
+        32
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09A4A0U1ND",
+          "mode": "list",
+          "cachedResultName": "n8n"
+        },
+        "text": "RSS の取得が完了しました 🚀",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        672,
+        -176
+      ],
+      "id": "e514d80e-8779-4fdb-9e9c-7cace19fa938",
+      "name": "Send a message",
+      "webhookId": "ace6aa56-7833-4818-beaa-715279116766",
+      "executeOnce": true,
+      "credentials": {
+        "slackApi": {
+          "id": "ygvs2LZZO7sTZkqS",
+          "name": "Private Slack Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const feedInfo = $(\"Get Feed Sources\").item.json;\n\nreturn {\n  ...$input.item.json,\n  feedSourceId: feedInfo.id\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        32
+      ],
+      "id": "ff9ca918-c60c-40dc-af4f-1e0db8866a96",
+      "name": "Add Feed information"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Feed Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Feed Sources": {
+      "main": [
+        [
+          {
+            "node": "Loop Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Feeds": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read RSS": {
+      "main": [
+        [
+          {
+            "node": "Add Feed information",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Articles": {
+      "main": [
+        [
+          {
+            "node": "Loop Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Feed information": {
+      "main": [
+        [
+          {
+            "node": "Process Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "9c58e2bf-ca48-47c4-ac92-d10b30437a9a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a25a58fbaad6dc2edf7c853c2e8dc94a121e7e06e6b6e53130fb622e9d43f167"
+  },
+  "id": "Haf7eC6SXFeqyX0K",
+  "tags": [
+    {
+      "updatedAt": "2025-12-11T14:48:25.929Z",
+      "createdAt": "2025-12-11T14:48:25.929Z",
+      "id": "DGWlHMRzJGZagG5p",
+      "name": "Tech News Collector"
+    }
+  ]
+}
