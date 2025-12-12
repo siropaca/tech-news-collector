@@ -2,10 +2,10 @@
 
 ## ワークフロー一覧
 
-| ワークフロー名 | ID | 実行間隔 | ステータス | 目的 |
-|----------------|-----|----------|----------|------|
-| Tech News Collector - Read RSS | `Haf7eC6SXFeqyX0K` | 1時間ごと | アクティブ | RSS収集・サブWF呼び出し |
-| Tech News Collector - Process Articles | `8M3Ib9Rx0kcznelb` | - | 非アクティブ | 記事処理・AI分析・保存 |
+| ワークフロー名 | 実行間隔 | ステータス | 目的 |
+|----------------|----------|----------|------|
+| Tech News Collector - Read RSS | 1時間ごと | アクティブ | RSS収集・サブWF呼び出し |
+| Tech News Collector - Process Articles | - | 非アクティブ | 記事処理・AI分析・保存 |
 
 ---
 
@@ -70,7 +70,7 @@
             └─► (新規) ─► [Get Original Data: 元データ取得]
                             │
                             ▼
-                        [AI Process: GPT-5.1で分析]
+                        [AI Process: OpenAIで分析]
                             │
                             ▼
                         [Build Article Data: 保存用データ構築]
@@ -92,7 +92,7 @@
 | If Exists | if | 重複判定（guidが存在するか） |
 | Skip (Already Exists) | noOp | 重複記事をスキップ |
 | Get Original Data | code | Format Inputの元データを取得 |
-| AI Process | openAi | GPT-5.1で記事を分析 |
+| AI Process | openAi | OpenAIで記事を分析 |
 | Build Article Data | code | AI結果と元データを結合して保存用データを構築 |
 | Save Article | supabase | `articles`テーブルに保存 |
 
@@ -219,7 +219,7 @@ return {
 | 項目 | 値 | 備考 |
 |------|-----|------|
 | 実行間隔 | 1時間 | Schedule Trigger |
-| AIモデル | GPT-5.1 | OpenAI |
+| AIモデル | OpenAI | - |
 | 要約文字数 | 200〜300字 | AI生成 |
 | キーワード数 | 3〜5個 | AI抽出 |
 
