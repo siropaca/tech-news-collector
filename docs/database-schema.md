@@ -67,7 +67,7 @@ RSSフィードソースの管理テーブル。
 | `content` | TEXT | NO | - | 記事の本文（RSSから取得した内容） |
 | `published_at` | TIMESTAMPTZ | NO | - | 記事の公開日時 |
 | `fetched_at` | TIMESTAMPTZ | NO | now() | システムが記事を取得した日時 |
-| `category` | article_category | NO | - | AIが判定したカテゴリ |
+| `category` | article_category[] | NO | - | AIが判定したカテゴリ（配列、複数指定可） |
 | `keywords` | TEXT[] | NO | '{}' | AIが抽出したキーワード（配列） |
 | `summary` | TEXT | NO | - | AIが生成した日本語要約（200〜300字） |
 | `original_language` | content_language | NO | 'ja' | 記事の元言語（ja: 日本語, en: 英語） |
@@ -102,7 +102,7 @@ RSSフィードソースの管理テーブル。
 │ updated_at          │   │   │ content                     │
 └─────────────────────┘   │   │ published_at                │
                           │   │ fetched_at                  │
-                          │   │ category                    │
+                          │   │ category[]                  │
                           │   │ keywords[]                  │
                           │   │ summary                     │
                           │   │ original_language           │
