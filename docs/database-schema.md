@@ -14,8 +14,8 @@
 | 値 | 説明 |
 |----|------|
 | `ai_ml` | AI・機械学習 |
-| `web_frontend` | Webフロントエンド |
-| `web_backend` | Webバックエンド |
+| `frontend` | フロントエンド |
+| `backend` | バックエンド |
 | `infrastructure` | インフラ・クラウド |
 | `security` | セキュリティ |
 | `devops` | DevOps・CI/CD |
