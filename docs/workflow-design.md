@@ -4,9 +4,9 @@
 
 | ワークフロー名 | 実行間隔 | 目的 |
 |----------------|----------|------|
-| Tech News Collector - Fetch RSS | 1時間ごと | RSS収集・サブWF呼び出し |
+| Tech News Collector - Fetch RSS | 定期実行 | RSS収集・サブWF呼び出し |
 | Tech News Collector - Process RSS Articles | - | 記事処理・AI分析・保存 |
-| Tech News Collector - Send Slack (ai_ml) | 3時間ごと | AI/ML記事のSlack配信 |
+| Tech News Collector - Send Slack (ai_ml) | 定期実行 | AI/ML記事のSlack配信 |
 
 ---
 
@@ -15,7 +15,7 @@
 ### フロー図
 
 ```
-[Schedule Trigger: 1時間ごと]
+[Schedule Trigger]
     │
     ▼
 [Get Active Feed Sources]
@@ -32,7 +32,7 @@
 
 | ノード名 | タイプ | 説明 |
 |----------|--------|------|
-| Schedule Trigger | scheduleTrigger | 1時間ごとに実行 |
+| Schedule Trigger | scheduleTrigger | 定期実行 |
 | Get Active Feed Sources | supabase | `feed_sources`から`is_active=true`のレコードを取得 |
 | Loop Feed Sources | splitInBatches | フィードを1件ずつループ処理 |
 | Fetch RSS Feed | rssFeedRead | 各フィードのURLからRSSを取得 |
@@ -96,7 +96,7 @@
 ### フロー図
 
 ```
-[Schedule Trigger: 3時間ごと]
+[Schedule Trigger]
     │
     ▼
 [Get ai_ml Articles]
@@ -115,8 +115,8 @@
 
 | ノード名 | タイプ | 説明 |
 |----------|--------|------|
-| Schedule Trigger | scheduleTrigger | 3時間ごとに実行 |
-| Get ai_ml Articles | supabase | 過去3時間以内のAI/ML記事を取得 |
+| Schedule Trigger | scheduleTrigger | 定期実行 |
+| Get ai_ml Articles | supabase | 直近のAI/ML記事を取得 |
 | Has Articles? | if | 記事が存在するか判定 |
 | Extract Article Fields | splitOut | 必要なフィールドのみ抽出 |
 | Aggregate Articles | aggregate | 全記事を1つのリストに集約 |
@@ -130,12 +130,13 @@
 配列型カラムのフィルタには `cs`（contains）演算子を使用：
 
 ```
-category=cs.{ai_ml}&fetched_at=gte.{{ $now.minus({hours: 3}).toUTC().toISO() }}
+category=cs.{ai_ml}&fetched_at=gte.{{ $now.minus({hours: N}).toUTC().toISO() }}
 ```
 
 - `cs.{ai_ml}`: category配列に`ai_ml`が含まれる
 - `gte`: 以上（greater than or equal）
 - `.toUTC().toISO()`: タイムゾーン問題を回避するためUTC形式で出力
+- `N`: 実行間隔に合わせて調整
 
 ---
 
@@ -344,10 +345,10 @@ AI エージェントと外部 API の連携がクラウドレベルで整って
 
 | 項目 | 値 | 備考 |
 |------|-----|------|
-| RSS収集間隔 | 1時間 | Fetch RSS |
-| Slack配信間隔 | 3時間 | Send Slack |
+| RSS収集間隔 | 定期実行 | Fetch RSS |
+| 配信間隔 | 定期実行 | Send Slack |
 | AIモデル（記事分析） | OpenAI GPT-5.1 | Process RSS Articles |
-| AIモデル（Slack生成） | OpenAI GPT-5.1 | Send Slack |
+| AIモデル（配信生成） | OpenAI GPT-5.1 | Send Slack |
 | 要約文字数 | 200〜300字 | AI生成 |
 | キーワード数 | 3〜5個 | AI抽出 |
 | カテゴリ数 | 1〜3個 | AI判定 |
