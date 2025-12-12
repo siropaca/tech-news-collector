@@ -1,0 +1,499 @@
+{
+  "name": "Tech News Collector - Process Articles",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        -816,
+        0
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "loopArticles",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        208,
+        16
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "articles",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "guid",
+              "keyValue": "={{ $json.guid }}"
+            }
+          ]
+        }
+      },
+      "id": "checkDuplicate",
+      "name": "Check Duplicate",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        672,
+        32
+      ],
+      "typeVersion": 1,
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "yQ0CqMPOCVAm94Em",
+          "name": "tech-news-collector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json.guid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ifExists",
+      "name": "If Exists",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        880,
+        32
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {},
+      "id": "skipExisting",
+      "name": "Skip (Already Exists)",
+      "type": "n8n-nodes-base.noOp",
+      "position": [
+        816,
+        288
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "tableId": "articles",
+        "dataToSend": "autoMapInputData"
+      },
+      "id": "saveArticle",
+      "name": "Save Article",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        1984,
+        48
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "yQ0CqMPOCVAm94Em",
+          "name": "tech-news-collector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "GPT-5.1"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "あなたは技術記事を分析するアシスタントです。\n渡された記事情報を分析し、指定されたJSON形式で結果を返してください。\n\n## 分析タスク\n\n1. **title（タイトル）**: 日本語のタイトル（英語の場合は翻訳）\n2. **category（カテゴリ）**: 記事の内容に最も適したカテゴリを1つ選択\n3. **keywords（キーワード）**: 記事の重要なキーワードを3〜5個抽出\n4. **summary（要約）**: 記事の要点を日本語で要約\n5. **original_language（元言語）**: 記事の元の言語を判定\n\n## タイトルのルール\n\n- 日本語記事: 元のタイトルをそのまま使用\n- 英語記事: 日本語に翻訳（固有名詞・サービス名・技術用語は英語のまま維持）\n\n## カテゴリ一覧（必ずこの中から選択）\n\n- ai_ml: AI・機械学習・LLM関連\n- web_frontend: Webフロントエンド（React, Vue, CSS等）\n- web_backend: Webバックエンド（API, サーバーサイド等）\n- infrastructure: インフラ・クラウド（AWS, GCP, Azure, Kubernetes等）\n- security: セキュリティ・脆弱性\n- devops: DevOps・CI/CD・自動化\n- mobile: モバイルアプリ開発（iOS, Android, Flutter等）\n- database: データベース（SQL, NoSQL等）\n- programming: プログラミング言語・開発手法一般\n- business: テック業界ニュース・企業動向・買収等\n- tech_news: 複数分野にまたがる技術ニュース\n- other: 上記に該当しないもの\n\n## 言語一覧（必ずこの中から選択）\n\n- ja: 日本語\n- en: 英語\n\n## 要約のルール\n\n- 日本語で200〜300字で作成\n- 追加の推測や脚色は禁止（記事に書かれている事実のみ）\n- 重要な数値・比較・結論は必ず残す\n- 一段落で出力（箇条書き禁止）\n- 具体的なソースコードやコマンドは記載禁止\n- ですます調で統一（例：〜いる→〜います、〜だ→〜です）\n- 「この記事では」「この記事は」「本記事では」などのメタ表現で始めない\n- 主語（企業名、サービス名、技術名など）から直接書き始める\n\n## 出力形式\n\n以下のJSON形式のみを出力してください。説明文やマークダウンの装飾は不要です。\n\n{\n  \"title\": \"日本語タイトル\",\n  \"category\": \"カテゴリ値\",\n  \"keywords\": [\"キーワード1\", \"キーワード2\", \"キーワード3\"],\n  \"summary\": \"日本語での要約文\",\n  \"original_language\": \"言語コード\"\n}"
+            },
+            {
+              "content": "=以下の記事を分析してください。\n\n【タイトル】\n{{ $json.title }}\n\n【本文】\n{{ $json.content }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "aiProcess",
+      "name": "AI Process",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        1376,
+        48
+      ],
+      "typeVersion": 2.1,
+      "credentials": {
+        "openAiApi": {
+          "id": "i1uBJAnxSUuoud7W",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -208
+      ],
+      "id": "48d43ef6-2056-429b-8657-fa82a55f91ac",
+      "name": "Finished"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const item = $input.item.json;\n\nreturn {\n  guid: item.guid || item.id || item.link,\n  title: item.title,\n  url: item.link,\n  content: item.content || item.contentSnippet || item.summary || item.description || '',\n  published_at: item.isoDate || item.pubDate,\n  feed_source_id: item.feedSourceId\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        32
+      ],
+      "id": "690922fe-cf26-48d4-a7b9-12c6aee452f5",
+      "name": "Format Input"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Format Inputのデータを取得\nconst formatInput = $('Format Input').item.json;\n\n// AI Processの出力からテキストを取得してパース\nconst aiOutput = $input.item.json.output[0].content[0].text;\nconst aiResult = JSON.parse(aiOutput);\n\nreturn {\n  json: {\n    // Format Inputからの基本情報\n    guid: formatInput.guid,\n    original_title: formatInput.title,\n    url: formatInput.url,\n    content: formatInput.content,\n    published_at: formatInput.published_at,\n    feed_source_id: formatInput.feed_source_id,\n    \n    // AI Processからの分析結果\n    title: aiResult.title,\n    category: aiResult.category,\n    keywords: aiResult.keywords,\n    summary: aiResult.summary,\n    original_language: aiResult.original_language\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        48
+      ],
+      "id": "c0574f27-5aac-4ccc-9aec-d820045ef78d",
+      "name": "Build Article Data"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return $('Format Input').item.json;"
+      },
+      "id": "getOriginalData",
+      "name": "Get Format Input Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1136,
+        48
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "feed_sources",
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        -160
+      ],
+      "id": "1804391c-427d-45f9-8810-aabc76dbfc18",
+      "name": "Get Feed Sources",
+      "credentials": {
+        "supabaseApi": {
+          "id": "yQ0CqMPOCVAm94Em",
+          "name": "tech-news-collector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -224,
+        -160
+      ],
+      "id": "5b17c4f4-2e8d-4737-b914-da0ebf648da0",
+      "name": "RSS Read"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const feedInfo = $(\"Get Feed Sources\").item.json;\n\nreturn {\n  ...$input.item.json,\n  feedSourceId: feedInfo.id\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        -160
+      ],
+      "id": "a7d4d3b1-1d40-4373-a6f7-955526c4ca0d",
+      "name": "Add Feed information"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fad3be95-7abe-400a-b764-0de0e6f996d0",
+              "leftValue": "={{ $json.feedSourceId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -640,
+        0
+      ],
+      "id": "b912ca9d-e272-4003-a739-134857c595b1",
+      "name": "If test"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "If test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Finished",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicate": {
+      "main": [
+        [
+          {
+            "node": "If Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Exists": {
+      "main": [
+        [
+          {
+            "node": "Skip (Already Exists)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Format Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip (Already Exists)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Article": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Process": {
+      "main": [
+        [
+          {
+            "node": "Build Article Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Input": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Article Data": {
+      "main": [
+        [
+          {
+            "node": "Save Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Format Input Data": {
+      "main": [
+        [
+          {
+            "node": "AI Process",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Feed Sources": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Add Feed information",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Feed information": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If test": {
+      "main": [
+        [
+          {
+            "node": "Get Feed Sources",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "a70f5919-f6b5-4025-b3b9-ea8f57e43a39",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a25a58fbaad6dc2edf7c853c2e8dc94a121e7e06e6b6e53130fb622e9d43f167"
+  },
+  "id": "8M3Ib9Rx0kcznelb",
+  "tags": [
+    {
+      "updatedAt": "2025-12-11T14:48:25.929Z",
+      "createdAt": "2025-12-11T14:48:25.929Z",
+      "id": "DGWlHMRzJGZagG5p",
+      "name": "Tech News Collector"
+    }
+  ]
+}
