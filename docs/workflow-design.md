@@ -6,7 +6,11 @@
 |----------------|----------|------|
 | Tech News Collector - Fetch RSS | 定期実行 | RSS収集・サブWF呼び出し |
 | Tech News Collector - Process RSS Articles | - | 記事処理・AI分析・保存 |
-| Tech News Collector - Send Slack (*) | 定期実行 | カテゴリ別記事配信 |
+| Tech News Collector - Send (ai_ml) | 定期実行 | AI・機械学習カテゴリの記事配信 |
+| Tech News Collector - Send (frontend) | 定期実行 | フロントエンドカテゴリの記事配信 |
+| Tech News Collector - Send (business) | 定期実行 | ビジネスカテゴリの記事配信 |
+| Tech News Collector - Send (tech_blog) | 定期実行 | 技術ブログカテゴリの記事配信 |
+| Notification Error | - | エラー通知用ワークフロー |
 
 ---
 
@@ -18,12 +22,15 @@
 [Schedule Trigger]
     │
     ▼
+[Set Start Time]
+    │
+    ▼
 [Get Feed Sources]
     │
     ▼
 [Loop Feed Sources]
     │
-    ├─► (done) ─► [Notify Completion]
+    ├─► (done) ─► [Aggregate Feed Sources] → [Get New Articles] → [Notify Completion]
     │
     └─► [Fetch RSS Feed]
             │
@@ -40,6 +47,7 @@
 | ノード名 | タイプ | 説明 |
 |----------|--------|------|
 | Schedule Trigger | scheduleTrigger | 定期実行 |
+| Set Start Time | code | ワークフロー開始時刻を記録 |
 | Get Feed Sources | supabase | `feed_sources`から`is_active=true`のレコードを取得 |
 | Loop Feed Sources | splitInBatches | フィードを1件ずつループ処理 |
 | Fetch RSS Feed | rssFeedRead | 各フィードのURLからRSSを取得 |
@@ -48,7 +56,9 @@
 | Add Feed Info | code | フィードソースIDを各記事に付与 |
 | Process RSS Articles (SubWF) | executeWorkflow | サブワークフローを呼び出し |
 | Notify Invalid Feed | slack | 無効なフィードをSlackに通知 |
-| Notify Completion | slack | 完了通知を送信（無効化中） |
+| Aggregate Feed Sources | aggregate | フィードソースを集約 |
+| Get New Articles | supabase | 今回追加された記事を取得（`fetched_at >= startTime`） |
+| Notify Completion | slack | 完了通知を送信 |
 
 ---
 
@@ -101,7 +111,7 @@
 
 ---
 
-## Tech News Collector - Send Slack (*)（配信ワークフロー）
+## Tech News Collector - Send (*)（配信ワークフロー）
 
 ### フロー図
 
@@ -116,8 +126,8 @@
     │
     ├─► (no) ─► [No Articles (Skip)]
     │
-    └─► (yes) ─► [Extract Article Fields] → [Aggregate Articles] → [Generate Message] → [Send Message]
-                                                                          │
+    └─► (yes) ─► [Extract Article Fields] → [Aggregate Articles] → [Generate Slack Message] → [Send to Slack]
+                                                                          │                  → [Send to Discord]
                                                                    [OpenAI Chat Model]
 ```
 
@@ -130,17 +140,27 @@
 | Has Articles? | if | 記事が存在するか判定 |
 | Extract Article Fields | splitOut | 必要なフィールドのみ抽出 |
 | Aggregate Articles | aggregate | 全記事を1つのリストに集約 |
-| Generate Message | agent | AIでトレンド要約・おすすめ記事を生成 |
+| Generate Slack Message | agent | AIでトレンド要約・おすすめ記事を生成 |
 | OpenAI Chat Model | lmChatOpenAi | GPT-5.1モデル |
-| Send Message | - | 配信先にメッセージ送信 |
+| Send to Slack | slack | Slackにメッセージ送信（無効化中） |
+| Send to Discord | discord | Discordにメッセージ送信 |
 | No Articles (Skip) | noOp | 記事がない場合はスキップ |
+
+### カテゴリ別ワークフロー
+
+| ワークフロー名 | 対象カテゴリ | 出力形式 |
+|----------------|--------------|----------|
+| Send (ai_ml) | ai_ml | トレンド要約 + おすすめ記事 |
+| Send (frontend) | frontend | トレンド要約 + おすすめ記事 |
+| Send (business) | business | トレンド要約 + おすすめ記事 |
+| Send (tech_blog) | tech_blog | おすすめブログ記事（ひとこと紹介付き） |
 
 ### Supabaseフィルタ設定
 
 配列型カラムのフィルタには `cs`（contains）演算子を使用：
 
 ```
-category=cs.{カテゴリ名}&fetched_at=gte.{{ $now.minus({hours: N}).toUTC().toISO() }}
+category=cs.{カテゴリ名}&published_at=gte.{{ $now.minus({hours: N}).toUTC().toISO() }}
 ```
 
 - `cs.{カテゴリ名}`: category配列に指定カテゴリが含まれる
@@ -286,78 +306,37 @@ return {
 
 ---
 
-## Generate Message（システムプロンプト）
+## Generate Slack Message（プロンプト）
 
-カテゴリに応じてシステムプロンプトを調整してください。以下はai_mlカテゴリの例です。
+### 共通ルール
 
-```
-あなたはAI・機械学習分野の技術トレンドを分析するアシスタントです。
-渡された記事リストを分析し、通知用のメッセージを生成してください。
+すべてのSendワークフローで以下のルールを適用：
 
-## 出力形式
+- **見出し**: `## {現在日時}のニュース` 形式（tech_blogは「おすすめブログ記事」）
+- **日本語優先**: 同程度の内容であれば日本語記事を優先して選定
+- **言語コード表示**: 日本語以外の記事には末尾に `(en)` などを付与
+- **リンク形式**: `[タイトル](<URL>)` または `[タイトル](<URL>) (en)`
+- **絵文字**: 2行に1つ程度、控えめに添える
 
-以下の形式で出力してください。マークダウンやコードブロックの装飾は不要です。
+### カテゴリ別プロンプト概要
 
-### 出力構成
+| カテゴリ | 役割 | 出力形式 |
+|----------|------|----------|
+| ai_ml | AI・機械学習トレンド分析 | トレンド要約4行 + おすすめ記事5件 |
+| frontend | フロントエンドトレンド分析 | トレンド要約4行 + おすすめ記事5件 |
+| business | ビジネス動向分析 | トレンド要約4行 + おすすめ記事5件 |
+| tech_blog | 技術ブログ選定 | おすすめブログ記事（ひとこと紹介付き）最大10件 |
 
-1. **トレンド要約**（4行程度）
-   - 記事全体から読み取れるトレンドやトピックを簡潔にまとめる
-   - 句点（。）ごとに改行する
-   - 具体的な技術名やサービス名を含める
-
-2. **おすすめ記事**（5件程度）
-   - ユーザーの関心に合った記事を選定
-   - Discord形式のリンク [タイトル](<URL>) で記載（カード非表示のため`<>`でURLを囲む）
-   - 選定理由は不要
-
-### トレンド要約のスタイル
-
-- ですます調を基本とする
-- 絵文字は句点（。）の代わりに文末に置く（「〜です 🔥」「〜そうです 👀」のように）
-- 絵文字の前には必ず半角スペースを入れる
-- 絵文字は文脈や内容に合ったものを自由に選ぶ（同じ絵文字を繰り返し使わず、バリエーションを持たせる）
-- 英語と日本語の間には必ず半角スペースを入れる（例：「Google が MCP 周りの整備を進めています」）
-- 「〜ですね」「〜かも」などの口語表現は使わず、「〜です」「〜します」で終える
-- 硬すぎるニュース文体ではなく、社内の技術共有チャンネルに投稿するような親しみやすいトーンで書く
-- 開発者が「お、気になる」と思えるような書き方を意識する
-
-### トレンド要約の書き方
-
-- 新サービスや新モデルの発表は「〜が発表されました」「〜がリリースされました」のように、まずニュースとして伝える
-- いきなり詳細な説明から入らず、何が起きたのかを最初に簡潔に述べる
-- 読者が前提知識なしでも理解できるよう、固有名詞が初出の場合は簡単な補足を入れる
-- 複数のトピックがある場合は、関連性のある話題をまとめて自然な流れで紹介する
-
-### おすすめ記事の選定基準（優先度順）
-
-1. **複数媒体で取り上げられているテーマ** - 異なるソースで重複して報じられているトピックは注目度が高いため必ず含める
-2. **ユーザーの関心に合致する記事** - ユーザーが指定した興味・関心に沿った内容
-3. **業界への影響が大きいニュース** - 新サービス発表、標準化動向、大手企業の発表など
-
-### 出力例
-
-OpenAI が新モデル GPT-5.2 を発表しました 🎉
-専門的な知識業務で人間の専門家レベルを目指すモデルで、ChatGPT や Microsoft 365 Copilot に順次展開される予定です 📚
-Google も MCP 周りの整備を進めており、Cloud API Registry で MCP サーバの管理が一元化できるようになります 🛠️
-AI エージェントと外部 API の連携がクラウドレベルで整ってきており、実務での活用がかなり現実的になってきています 🚀
-
-📌 おすすめ記事
-• [OpenAI、フラグシップモデル「GPT-5.2」を発表](<https://example.com/article1>)
-• [Google、MCPサーバの発見や管理のためのレジストリ「Cloud API Registry」プレビュー公開](<https://example.com/article2>)
-• ...
-```
-
-### ユーザープロンプト
-
-カテゴリに応じてユーザーの関心を調整してください。以下はai_mlカテゴリの例です。
+### ユーザープロンプト（共通構造）
 
 ```
 以下の記事リストを分析してください。
 
+## 現在日時
+{{ $now.setZone('Asia/Tokyo').toFormat('yyyy/MM/dd HH') }}時
+
 ## ユーザーの関心
-普段はWebアプリケーションの開発をしています。
-最近はAIエージェントやLLMを使った開発に興味があり、特にMCPやマルチエージェントシステムに注目しています。
-実務で使えるAIツールやAPIの情報などを追いかけたいです。
+（カテゴリに応じた関心事を記載）
 
 ## 記事リスト
 {{ JSON.stringify($json) }}
@@ -393,3 +372,6 @@ AI エージェントと外部 API の連携がクラウドレベルで整って
 ### Send WF
 - **記事なし**: スキップ（No Articles）
 - **AI APIエラー**: ワークフロー停止（要改善）
+
+### 共通
+- **エラー発生時**: Notification Errorワークフローで通知
