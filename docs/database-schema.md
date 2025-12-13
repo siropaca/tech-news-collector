@@ -50,6 +50,7 @@ RSSフィードソースの管理テーブル。
 | `id` | UUID | NO | gen_random_uuid() | 主キー（UUID自動生成） |
 | `name` | VARCHAR(30) | NO | - | フィード名 |
 | `url` | TEXT | NO | - | RSSフィードのURL（ユニーク制約あり） |
+| `site_url` | TEXT | YES | - | サイトのURL |
 | `default_category` | article_category | NO | 'other' | このフィードのデフォルトカテゴリ |
 | `is_active` | BOOLEAN | NO | true | 有効フラグ（falseの場合は収集対象外） |
 | `created_at` | TIMESTAMPTZ | NO | now() | レコード作成日時 |
@@ -139,12 +140,12 @@ WHERE 'ai_ml' = ANY(category)
 │ id (PK)             │◄──┐   │ id (PK)                     │
 │ name                │   │   │ feed_source_id (FK) ────────┘
 │ url (UNIQUE)        │   │   │ guid (UNIQUE)               │
-│ default_category    │   │   │ title                       │
-│ is_active           │   │   │ original_title              │
-│ created_at          │   │   │ url                         │
-│ updated_at          │   │   │ content                     │
-└─────────────────────┘   │   │ published_at                │
-                          │   │ fetched_at                  │
+│ site_url            │   │   │ title                       │
+│ default_category    │   │   │ original_title              │
+│ is_active           │   │   │ url                         │
+│ created_at          │   │   │ content                     │
+│ updated_at          │   │   │ published_at                │
+└─────────────────────┘   │   │ fetched_at                  │
                           │   │ category[]                  │
                           │   │ keywords[]                  │
                           │   │ summary                     │
