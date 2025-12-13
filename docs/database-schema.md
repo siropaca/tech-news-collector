@@ -48,7 +48,7 @@ RSSフィードソースの管理テーブル。
 | カラム | 型 | NULL | デフォルト | 説明 |
 |--------|-----|------|------------|------|
 | `id` | UUID | NO | gen_random_uuid() | 主キー（UUID自動生成） |
-| `name` | TEXT | NO | - | フィード名（例: Publickey, web.dev） |
+| `name` | TEXT | NO | - | フィード名（最大30文字） |
 | `url` | TEXT | NO | - | RSSフィードのURL（ユニーク制約あり） |
 | `default_category` | article_category | NO | 'other' | このフィードのデフォルトカテゴリ |
 | `is_active` | BOOLEAN | NO | true | 有効フラグ（falseの場合は収集対象外） |
@@ -58,6 +58,7 @@ RSSフィードソースの管理テーブル。
 **制約**:
 - `PRIMARY KEY(id)`
 - `UNIQUE(url)` - URL重複を防止
+- `CHECK(char_length(name) <= 30)` - name最大30文字
 
 ### articles
 
