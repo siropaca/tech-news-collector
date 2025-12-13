@@ -50,7 +50,7 @@ RSSフィードソースの管理テーブル。
 | `id` | UUID | NO | gen_random_uuid() | 主キー（UUID自動生成） |
 | `name` | VARCHAR(30) | NO | - | フィード名 |
 | `url` | TEXT | NO | - | RSSフィードのURL（ユニーク制約あり） |
-| `site_url` | TEXT | YES | - | サイトのURL |
+| `site_url` | TEXT | NO | - | サイトのURL |
 | `default_category` | article_category | NO | 'other' | このフィードのデフォルトカテゴリ |
 | `is_active` | BOOLEAN | NO | true | 有効フラグ（falseの場合は収集対象外） |
 | `created_at` | TIMESTAMPTZ | NO | now() | レコード作成日時 |
