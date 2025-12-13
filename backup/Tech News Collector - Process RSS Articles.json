@@ -9,7 +9,7 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "position": [
-        -816,
+        -848,
         0
       ],
       "typeVersion": 1.1
@@ -66,7 +66,7 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// Format Inputのデータを取得\nconst formatInput = $('Normalize RSS Data').item.json;\n\n// AI Processの出力からテキストを取得してパース\nconst aiOutput = $input.item.json.output[0].content[0].text;\nconst aiResult = JSON.parse(aiOutput);\n\nreturn {\n  json: {\n    // Format Inputからの基本情報\n    guid: formatInput.guid,\n    original_title: formatInput.title,\n    url: formatInput.url,\n    content: formatInput.content,\n    published_at: formatInput.published_at,\n    feed_source_id: formatInput.feed_source_id,\n    \n    // AI Processからの分析結果\n    title: aiResult.title,\n    category: aiResult.category,\n    keywords: aiResult.keywords,\n    summary: aiResult.summary,\n    original_language: aiResult.original_language\n  }\n};"
+        "jsCode": "// Format Inputのデータを取得\nconst formatInput = $('Normalize RSS Data').item.json;\n\n// AI Process の出力からテキストを取得してパース\nconst aiOutput = $input.item.json.output[0].content[0].text;\nconst aiResult = JSON.parse(aiOutput);\n\nreturn {\n  json: {\n    // Format Input からの基本情報\n    guid: formatInput.guid,\n    original_title: formatInput.title,\n    url: formatInput.url,\n    content: formatInput.content,\n    published_at: formatInput.published_at,\n    feed_source_id: formatInput.feed_source_id,\n    \n    // AI Process からの分析結果\n    title: aiResult.title,\n    category: aiResult.category,\n    keywords: aiResult.keywords,\n    summary: aiResult.summary,\n    original_language: aiResult.original_language\n  }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -114,7 +114,17 @@
       "parameters": {
         "operation": "getAll",
         "tableId": "feed_sources",
-        "limit": 1
+        "limit": 1,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "name",
+              "condition": "eq",
+              "keyValue": "GIGAZINE"
+            }
+          ]
+        }
       },
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
@@ -124,6 +134,7 @@
       ],
       "id": "1804391c-427d-45f9-8810-aabc76dbfc18",
       "name": "Get Feed Source (Test)",
+      "alwaysOutputData": true,
       "credentials": {
         "supabaseApi": {
           "id": "yQ0CqMPOCVAm94Em",
@@ -245,18 +256,29 @@
       "typeVersion": 2
     },
     {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -160
+      ],
+      "id": "48d43ef6-2056-429b-8657-fa82a55f91ac",
+      "name": "Done"
+    },
+    {
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "gpt-5.1",
+          "value": "gpt-5.2",
           "mode": "list",
-          "cachedResultName": "GPT-5.1"
+          "cachedResultName": "GPT-5.2"
         },
         "responses": {
           "values": [
             {
               "role": "system",
-              "content": "あなたは技術記事を分析するアシスタントです。\n渡された記事情報を分析し、指定されたJSON形式で結果を返してください。\n\n## 分析タスク\n\n1. **title（タイトル）**: 日本語のタイトル（英語の場合は翻訳）\n2. **category（カテゴリ）**: 記事の内容に該当するカテゴリを1〜3個選択（配列で返す）\n3. **keywords（キーワード）**: 記事の重要なキーワードを3〜5個抽出\n4. **summary（要約）**: 記事の要点を日本語で要約\n5. **original_language（元言語）**: 記事の元の言語を判定\n\n## タイトルのルール\n\n- 日本語記事: 元のタイトルをそのまま使用\n- 英語記事: 日本語に翻訳（固有名詞・サービス名・技術用語は英語のまま維持）\n\n## カテゴリ一覧（必ずこの中から選択）\n\n- ai_ml: AI・機械学習・LLM関連\n- web_frontend: Webフロントエンド（React, Vue, CSS等）\n- web_backend: Webバックエンド（API, サーバーサイド等）\n- infrastructure: インフラ・クラウド（AWS, GCP, Azure, Kubernetes等）\n- security: セキュリティ・脆弱性\n- devops: DevOps・CI/CD・自動化\n- mobile: モバイルアプリ開発（iOS, Android, Flutter等）\n- database: データベース（SQL, NoSQL等）\n- programming: プログラミング言語・開発手法一般\n- business: テック業界ニュース・企業動向・買収等\n- tech_news: 複数分野にまたがる技術ニュース\n- tech_blog: 技術ブログ\n- other: 上記に該当しないもの\n\n## カテゴリ選択のルール\n\n- 最も関連性の高いカテゴリを1〜3個選択する\n- 1つで十分な場合は1つだけでよい\n- 最大3個まで（4個以上は選択しない）\n- 優先度の高い順に並べる\n\n## 言語一覧（必ずこの中から選択）\n\n- ja: 日本語\n- en: 英語\n\n## 要約のルール\n\n- 日本語で200〜300字で作成\n- 追加の推測や脚色は禁止（記事に書かれている事実のみ）\n- 重要な数値・比較・結論は必ず残す\n- 一段落で出力（箇条書き禁止）\n- 具体的なソースコードやコマンドは記載禁止\n- ですます調で統一（例：〜いる→〜います、〜だ→〜です）\n- 「この記事では」「この記事は」「本記事では」などのメタ表現で始めない\n- 主語（企業名、サービス名、技術名など）から直接書き始める\n\n## 出力形式\n\n以下のJSON形式のみを出力してください。説明文やマークダウンの装飾は不要です。\n\n{\n  \"title\": \"日本語タイトル\",\n  \"category\": [\"カテゴリ1\", \"カテゴリ2\"],\n  \"keywords\": [\"キーワード1\", \"キーワード2\", \"キーワード3\"],\n  \"summary\": \"日本語での要約文\",\n  \"original_language\": \"言語コード\"\n}"
+              "content": "あなたは技術記事を分析するアシスタントです。\n渡された記事情報を分析し、指定されたJSON形式で結果を返してください。\n\n## 分析タスク\n\n1. **title（タイトル）**: 日本語のタイトル（英語の場合は翻訳）\n2. **category（カテゴリ）**: 記事の内容に該当するカテゴリを1〜3個選択（配列で返す）\n3. **keywords（キーワード）**: 記事の重要なキーワードを3〜5個抽出\n4. **summary（要約）**: 記事の要点を日本語で要約\n5. **original_language（元言語）**: 記事の元の言語を判定\n\n## タイトルのルール\n\n- 日本語記事: 元のタイトルをそのまま使用\n- 英語記事: 日本語に翻訳（固有名詞・サービス名・技術用語は英語のまま維持）\n\n## カテゴリ一覧（必ずこの中から選択）\n\n- ai_ml: AI・機械学習・LLM関連\n- frontend: フロントエンド（React, Vue, CSS等）\n- backend: バックエンド（API, サーバーサイド等）\n- infrastructure: インフラ・クラウド（AWS, GCP, Azure, Kubernetes等）\n- security: セキュリティ・脆弱性\n- devops: DevOps・CI/CD・自動化\n- mobile: モバイルアプリ開発（iOS, Android, Flutter等）\n- database: データベース（SQL, NoSQL等）\n- programming: プログラミング言語・開発手法一般\n- technology: ハードウェア・ガジェット・新技術（CPU, GPU, デバイス, 量子コンピュータ等）\n- ui_ux: UI/UXデザイン・ユーザビリティ・アクセシビリティ\n- design: グラフィックデザイン・デザインツール・デザインシステム\n- business: テック業界ニュース・企業動向・買収等\n- general: 複数分野にまたがる技術トピック・総合的な技術情報\n- tech_blog: 技術ブログ\n- other: 上記に該当しないもの\n\n## カテゴリ選択のルール\n\n- 最も関連性の高いカテゴリを1〜3個選択する\n- 1つで十分な場合は1つだけでよい\n- 最大3個まで（4個以上は選択しない）\n- 優先度の高い順に並べる\n\n## 言語一覧（必ずこの中から選択）\n\n- ja: 日本語\n- en: 英語\n\n## 要約のルール\n\n- 日本語で200〜300字で作成\n- 追加の推測や脚色は禁止（記事に書かれている事実のみ）\n- 重要な数値・比較・結論は必ず残す\n- 一段落で出力（箇条書き禁止）\n- 具体的なソースコードやコマンドは記載禁止\n- ですます調で統一（例：〜いる→〜います、〜だ→〜です）\n- 「この記事では」「この記事は」「本記事では」などのメタ表現で始めない\n- 主語（企業名、サービス名、技術名など）から直接書き始める\n\n## キーワードのルール\n\n- 配列内の各キーワードは必ずダブルクオート（\"）で囲むこと\n- 日本語のキーワードも必ずダブルクオートで囲むこと\n- 例: [\"Claude Code\", \"CLAUDE.md\", \"コンテキスト\", \"プロジェクトルール\"]\n\n## 出力形式\n\n以下のJSON形式のみを出力してください。説明文やマークダウンの装飾は不要です。\nすべての文字列値は必ずダブルクオートで囲んでください。\n\n{\n  \"title\": \"日本語タイトル\",\n  \"category\": [\"カテゴリ1\", \"カテゴリ2\"],\n  \"keywords\": [\"キーワード1\", \"キーワード2\", \"キーワード3\"],\n  \"summary\": \"日本語での要約文\",\n  \"original_language\": \"言語コード\"\n}"
             },
             {
               "content": "=以下の記事を分析してください。\n\n【タイトル】\n{{ $json.title }}\n\n【本文】\n{{ $json.content }}"
@@ -267,30 +289,21 @@
         "options": {}
       },
       "id": "aiProcess",
-      "name": "Analyze with AI",
+      "name": "Analyze",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "position": [
         1344,
         48
       ],
       "typeVersion": 2.1,
+      "alwaysOutputData": false,
+      "retryOnFail": true,
       "credentials": {
         "openAiApi": {
           "id": "i1uBJAnxSUuoud7W",
           "name": "OpenAi account"
         }
       }
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        416,
-        -208
-      ],
-      "id": "48d43ef6-2056-429b-8657-fa82a55f91ac",
-      "name": "Done"
     }
   ],
   "pinData": {},
@@ -452,14 +465,14 @@
       "main": [
         [
           {
-            "node": "Analyze with AI",
+            "node": "Analyze",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Analyze with AI": {
+    "Analyze": {
       "main": [
         [
           {
@@ -475,13 +488,14 @@
   "settings": {
     "executionOrder": "v1",
     "saveDataErrorExecution": "all",
-    "saveDataSuccessExecution": "all",
-    "saveManualExecutions": true,
-    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
     "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "iQRj4MEt8AnsmEE9"
   },
-  "versionId": "4166d1d6-d2cc-4904-9a54-6985b96ecddc",
+  "versionId": "c5028b17-98a5-4b49-a876-b11c42872e86",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "a25a58fbaad6dc2edf7c853c2e8dc94a121e7e06e6b6e53130fb622e9d43f167"

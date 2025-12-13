@@ -1,0 +1,78 @@
+{
+  "name": "Notification Error",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b7df6e88-6fa5-498a-943f-6b038d65d50a",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09A4A0U1ND",
+          "mode": "list",
+          "cachedResultName": "n8n"
+        },
+        "text": "ワークフローの実行中にエラーが発生しました 🚨",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "4e8ac874-f754-4fb2-b325-ad0734ba8704",
+      "name": "Send a message",
+      "webhookId": "82f199b4-a18c-46b0-a22d-22d9454e0cff",
+      "credentials": {
+        "slackApi": {
+          "id": "ygvs2LZZO7sTZkqS",
+          "name": "#Private"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8cbbdeea-5e4b-4c7a-b4d6-29e2b784b8fe",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a25a58fbaad6dc2edf7c853c2e8dc94a121e7e06e6b6e53130fb622e9d43f167"
+  },
+  "id": "iQRj4MEt8AnsmEE9",
+  "tags": [
+    {
+      "updatedAt": "2025-12-11T14:48:25.929Z",
+      "createdAt": "2025-12-11T14:48:25.929Z",
+      "id": "DGWlHMRzJGZagG5p",
+      "name": "Tech News Collector"
+    }
+  ]
+}

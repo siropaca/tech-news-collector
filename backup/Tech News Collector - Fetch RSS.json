@@ -15,41 +15,10 @@
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "position": [
-        -48,
+        -240,
         16
       ],
       "typeVersion": 1.2
-    },
-    {
-      "parameters": {
-        "operation": "getAll",
-        "tableId": "feed_sources",
-        "returnAll": true,
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "is_active",
-              "condition": "is",
-              "keyValue": "true"
-            }
-          ]
-        }
-      },
-      "id": "getFeedSources",
-      "name": "Get Active Feed Sources",
-      "type": "n8n-nodes-base.supabase",
-      "position": [
-        208,
-        16
-      ],
-      "typeVersion": 1,
-      "alwaysOutputData": true,
-      "credentials": {
-        "supabaseApi": {
-          "id": "yQ0CqMPOCVAm94Em",
-          "name": "tech-news-collector"
-        }
-      }
     },
     {
       "parameters": {
@@ -73,7 +42,7 @@
       "name": "Fetch RSS Feed",
       "type": "n8n-nodes-base.rssFeedRead",
       "position": [
-        672,
+        688,
         32
       ],
       "typeVersion": 1.2
@@ -81,13 +50,13 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const feedInfo = $(\"Get Active Feed Sources\").item.json;\n\nreturn {\n  ...$input.item.json,\n  feedSourceId: feedInfo.id\n};"
+        "jsCode": "const feedInfo = $(\"Get Feed Sources\").item.json;\n\nreturn {\n  ...$input.item.json,\n  feedSourceId: feedInfo.id\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        896,
-        32
+        1344,
+        16
       ],
       "id": "ff9ca918-c60c-40dc-af4f-1e0db8866a96",
       "name": "Add Feed Info"
@@ -101,7 +70,7 @@
           "mode": "list",
           "cachedResultName": "n8n"
         },
-        "text": "RSS の取得が完了しました 🚀",
+        "text": "=RSS の取得が完了しました ({{ $input.item.json.values().length }}件) 🚀",
         "otherOptions": {
           "includeLinkToWorkflow": false
         }
@@ -109,7 +78,7 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.4,
       "position": [
-        672,
+        1136,
         -176
       ],
       "id": "e514d80e-8779-4fdb-9e9c-7cace19fa938",
@@ -119,7 +88,7 @@
       "credentials": {
         "slackApi": {
           "id": "ygvs2LZZO7sTZkqS",
-          "name": "Private Slack Account"
+          "name": "#Private"
         }
       }
     },
@@ -146,10 +115,179 @@
       "name": "Process RSS Articles (SubWF)",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        1104,
+        1536,
+        16
+      ],
+      "typeVersion": 1.2,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "feed_sources",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "is_active",
+              "condition": "is",
+              "keyValue": "true"
+            }
+          ]
+        }
+      },
+      "id": "getFeedSources",
+      "name": "Get Feed Sources",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        208,
+        16
+      ],
+      "typeVersion": 1,
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "yQ0CqMPOCVAm94Em",
+          "name": "tech-news-collector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "maxItems": 30
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        16
+      ],
+      "id": "c770503d-f25a-493d-9cdf-cfc68f399562",
+      "name": "Limit Articles"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "93af26b2-3731-494c-9843-42098ab1acaa",
+              "leftValue": "={{ $json.title }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
         32
       ],
-      "typeVersion": 1.2
+      "id": "3c368863-4655-4911-911a-d818b8276a1d",
+      "name": "Is Valid Feed"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09A4A0U1ND",
+          "mode": "list",
+          "cachedResultName": "n8n"
+        },
+        "text": "=記事を取得できなかった Feed があります 👀",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1136,
+        240
+      ],
+      "id": "277e72db-e561-411d-91cf-eca2f27aec7d",
+      "name": "Notify Invalid Feed",
+      "webhookId": "92339a32-4433-44ca-8edc-c59e49ea7525",
+      "credentials": {
+        "slackApi": {
+          "id": "ygvs2LZZO7sTZkqS",
+          "name": "#Private"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  startTime: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        16
+      ],
+      "id": "6604dbaa-e227-4572-913e-9527035aec25",
+      "name": "Set Start Time"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -176
+      ],
+      "id": "3c8b736a-9453-4824-8b52-d7747c72c2a7",
+      "name": "Aggregate Feed Sources"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "articles",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "fetched_at",
+              "condition": "gt",
+              "keyValue": "={{ $('Set Start Time').item.json.startTime }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        912,
+        -176
+      ],
+      "id": "ba76ac57-3002-4084-ab16-fcb6170228a9",
+      "name": "Get New Articles",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "yQ0CqMPOCVAm94Em",
+          "name": "tech-news-collector"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -158,18 +296,7 @@
       "main": [
         [
           {
-            "node": "Get Active Feed Sources",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Active Feed Sources": {
-      "main": [
-        [
-          {
-            "node": "Loop Feed Sources",
+            "node": "Set Start Time",
             "type": "main",
             "index": 0
           }
@@ -180,7 +307,7 @@
       "main": [
         [
           {
-            "node": "Notify Completion",
+            "node": "Aggregate Feed Sources",
             "type": "main",
             "index": 0
           }
@@ -198,7 +325,7 @@
       "main": [
         [
           {
-            "node": "Add Feed Info",
+            "node": "Is Valid Feed",
             "type": "main",
             "index": 0
           }
@@ -226,19 +353,109 @@
           }
         ]
       ]
+    },
+    "Get Feed Sources": {
+      "main": [
+        [
+          {
+            "node": "Loop Feed Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit Articles": {
+      "main": [
+        [
+          {
+            "node": "Add Feed Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Valid Feed": {
+      "main": [
+        [
+          {
+            "node": "Limit Articles",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Invalid Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Invalid Feed": {
+      "main": [
+        [
+          {
+            "node": "Loop Feed Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Completion": {
+      "main": [
+        []
+      ]
+    },
+    "Set Start Time": {
+      "main": [
+        [
+          {
+            "node": "Get Feed Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Feed Sources": {
+      "main": [
+        [
+          {
+            "node": "Get New Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get New Articles": {
+      "main": [
+        [
+          {
+            "node": "Notify Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1",
     "saveDataErrorExecution": "all",
-    "saveDataSuccessExecution": "all",
-    "saveManualExecutions": true,
-    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
     "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "iQRj4MEt8AnsmEE9"
   },
-  "versionId": "35de6449-3822-40a7-8a30-41886fe7cc23",
+  "versionId": "688d9306-6620-497a-b467-c07f6954254a",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "a25a58fbaad6dc2edf7c853c2e8dc94a121e7e06e6b6e53130fb622e9d43f167"

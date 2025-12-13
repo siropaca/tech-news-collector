@@ -1,0 +1,341 @@
+{
+  "name": "Tech News Collector - Send (ai_ml)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9,15,21,3 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -256,
+        -128
+      ],
+      "id": "218a7273-0605-4894-9fb9-b99a09ff9bcf",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.2",
+          "mode": "list",
+          "cachedResultName": "gpt-5.2"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        864,
+        80
+      ],
+      "id": "9d829c55-5105-446b-ad33-08ec3263ed02",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "i1uBJAnxSUuoud7W",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fe3595d9-0a14-4ac4-aee2-487a42542416",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        -128
+      ],
+      "id": "f6aab908-862d-4cc5-9f55-a82ed696c297",
+      "name": "Has Articles"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "title, url, summary",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "keywords",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        432,
+        -144
+      ],
+      "id": "75221353-686a-49e9-86f9-ab7444c342fb",
+      "name": "Extract Article Fields"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        656,
+        -144
+      ],
+      "id": "e3565c05-f999-48f6-bbac-6da6e614e2e8",
+      "name": "Aggregate Articles"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=以下の記事リストを分析してください。\n\n## 現在日時\n{{ $now.setZone('Asia/Tokyo').toFormat('yyyy/MM/dd HH') }}時\n\n## ユーザーの関心\n普段はWebアプリケーションの開発をしています。\n最近はAIエージェントやLLMを使った開発に興味があり、特にMCPやマルチエージェントシステムに注目しています。\n実務で使えるAIツールやAPIの情報などを追いかけたいです。\n\n## 記事リスト\n{{ JSON.stringify($json) }}",
+        "options": {
+          "systemMessage": "あなたはAI・機械学習分野の技術トレンドを分析するアシスタントです。\n渡された記事リストを分析し、Discord通知用のメッセージを生成してください。\n\n## 出力形式\n\n以下の形式で出力してください。マークダウンやコードブロックの装飾は不要です。\n\n### 出力構成\n\n1. **見出し**\n   - 最初の行に「## {現在日時}のニュース」形式で記載\n   - 現在日時はユーザーから渡される値をそのまま使用\n\n2. **トレンド要約**（4行程度）\n   - 記事全体から読み取れるトレンドやトピックを簡潔にまとめる\n   - 句点（。）ごとに改行する\n   - 具体的な技術名やサービス名を含める\n\n3. **おすすめ記事**（5件程度）\n   - ユーザーの関心に合った記事を選定\n   - 選定理由は不要\n\n### おすすめ記事のリンク形式（重要）\n\n各記事は必ず以下の形式で記載してください：\n- [タイトル](<URL>)\n\noriginal_language が ja 以外の場合は、末尾に言語コードを付与：\n- [タイトル](<URL>) (en)\n\n具体例：\n- [OpenAI、フラグシップモデル「GPT-5.2」を発表](<https://example.com/article1>)\n- [「Claude 4」が登場、コーディング性能が大幅向上](<https://example.com/article2>)\n- [【解説】MCP で AI エージェントと外部ツールを連携する](<https://example.com/article3>)\n- [Building Multi-Agent Systems with LangGraph](<https://example.com/article4>) (en)\n\n注意事項：\n- 各行は必ず `- [` から始めること\n- タイトルに「」『』【】などの記号が含まれていても、必ず `- [` から始めること\n- タイトルと URL の間に `](<` を必ず入れること\n- URL の後に `>)` を必ず入れること\n- original_language が ja の場合は言語コードを付けない\n- original_language が ja 以外の場合は `>)` の後に半角スペース + 言語コードを付ける（例：`>) (en)`）\n\n### トレンド要約のスタイル\n\n- ですます調を基本とする\n- 絵文字は2行に1つ程度、文末に控えめに添える（毎行つけない）\n- 絵文字をつける場合は句点（。）の代わりに文末に置く（「〜です 🔥」のように）\n- 絵文字の前には必ず半角スペースを入れる\n- 絵文字は文脈や内容に合ったものを自由に選ぶ（同じ絵文字を繰り返し使わず、バリエーションを持たせる）\n- 英語と日本語の間には必ず半角スペースを入れる（例：「Google が MCP 周りの整備を進めています」）\n- 「〜ですね」「〜かも」などの口語表現は使わず、「〜です」「〜します」で終える\n- 硬すぎるニュース文体ではなく、社内の技術共有チャンネルに投稿するような親しみやすいトーンで書く\n- 開発者が「お、気になる」と思えるような書き方を意識する\n\n### トレンド要約の書き方\n\n- 新モデルや新サービスの発表は「〜が発表されました」「〜がリリースされました」のように、まずニュースとして伝える\n- いきなり詳細な説明から入らず、何が起きたのかを最初に簡潔に述べる\n- 読者が前提知識なしでも理解できるよう、固有名詞が初出の場合は簡単な補足を入れる\n- 複数のトピックがある場合は、関連性のある話題をまとめて自然な流れで紹介する\n\n### おすすめ記事の選定基準（優先度順）\n\n1. **日本語の記事を優先** - 同程度の内容であれば日本語記事（original_language が ja）を優先して選定する\n2. **複数媒体で取り上げられているテーマ** - 異なるソースで重複して報じられているトピックは注目度が高いため必ず含める\n3. **ユーザーの関心に合致する記事** - ユーザーが指定した興味・関心に沿った内容\n4. **業界への影響が大きいニュース** - 新モデル発表、標準化動向、大手企業の発表など\n\n### 出力例\n\n## 2025/12/13 14時のニュース\n\nOpenAI が新モデル GPT-5.2 を発表しました。\n専門的な知識業務で人間の専門家レベルを目指すモデルで、ChatGPT や Microsoft 365 Copilot に順次展開される予定です 📚\nGoogle も MCP 周りの整備を進めており、Cloud API Registry で MCP サーバの管理が一元化できるようになります。\nAI エージェントと外部 API の連携がクラウドレベルで整ってきており、実務での活用がかなり現実的になってきています 🚀\n\n📌 おすすめ記事\n- [OpenAI、フラグシップモデル「GPT-5.2」を発表](<https://example.com/article1>)\n- [Google、MCPサーバの発見や管理のためのレジストリ「Cloud API Registry」プレビュー公開](<https://example.com/article2>)\n- [「Claude 4」登場、Anthropic が新モデルを発表](<https://example.com/article3>)\n- [【実践】MCP を使ったマルチエージェントシステムの構築](<https://example.com/article4>)\n- [Building Multi-Agent Systems with LangGraph](<https://example.com/article5>) (en)"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        864,
+        -144
+      ],
+      "id": "70547b96-4f3b-4d65-96c9-3aa2e4772fb9",
+      "name": "Generate Slack Message"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09A4A0U1ND",
+          "mode": "list",
+          "cachedResultName": "n8n"
+        },
+        "text": "={{ $json.output }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1280,
+        -224
+      ],
+      "id": "2a631106-51ed-4dc9-90ab-1099d72964a1",
+      "name": "Send to Slack",
+      "webhookId": "64442a9a-78f6-4fbf-ae0b-c845f5cf70cb",
+      "credentials": {
+        "slackApi": {
+          "id": "ygvs2LZZO7sTZkqS",
+          "name": "#Private"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        432,
+        64
+      ],
+      "id": "a06f4b46-0fe3-46a0-a39f-c545473acedc",
+      "name": "No Articles (Skip)"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "articles",
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "={{ 'category=cs.{ai_ml}&published_at=gte.' + $now.minus({hours: 6}).toUTC().toISO() }}"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        -128
+      ],
+      "id": "000745fa-3613-4a18-a0f7-96e254774061",
+      "name": "Get Articles",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "yQ0CqMPOCVAm94Em",
+          "name": "tech-news-collector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        -32
+      ],
+      "id": "8292a5e7-9a6d-4985-983b-a0a2676c252b",
+      "name": "Send to Discord",
+      "webhookId": "3e7e93ce-919b-494b-88e0-c63f8ea828c3",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "euRyMic89kHQcByw",
+          "name": "NEW ARCH DESIGNING (#notice-ai)"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Slack Message",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Articles": {
+      "main": [
+        [
+          {
+            "node": "Extract Article Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Articles (Skip)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Article Fields": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Articles": {
+      "main": [
+        [
+          {
+            "node": "Generate Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Slack": {
+      "main": [
+        []
+      ]
+    },
+    "Get Articles": {
+      "main": [
+        [
+          {
+            "node": "Has Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "iQRj4MEt8AnsmEE9"
+  },
+  "versionId": "177d264f-b79e-4e16-80fe-6c8fc522d05d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a25a58fbaad6dc2edf7c853c2e8dc94a121e7e06e6b6e53130fb622e9d43f167"
+  },
+  "id": "5QFBNJqUkhxB2z3W",
+  "tags": [
+    {
+      "updatedAt": "2025-12-11T14:48:25.929Z",
+      "createdAt": "2025-12-11T14:48:25.929Z",
+      "id": "DGWlHMRzJGZagG5p",
+      "name": "Tech News Collector"
+    }
+  ]
+}
