@@ -18,14 +18,21 @@
 [Schedule Trigger]
     │
     ▼
-[Get Active Feed Sources]
+[Get Feed Sources]
     │
     ▼
 [Loop Feed Sources]
     │
     ├─► (done) ─► [Notify Completion]
     │
-    └─► [Fetch RSS Feed] → [Add Feed Info] → [Process RSS Articles (SubWF)] → [Loop に戻る]
+    └─► [Fetch RSS Feed]
+            │
+            ▼
+        [Is Valid Feed?]
+            │
+            ├─► (true) ─► [Limit Articles] → [Add Feed Info] → [Process RSS Articles (SubWF)] → [Loop に戻る]
+            │
+            └─► (false) ─► [Notify Invalid Feed] → [Loop に戻る]
 ```
 
 ### ノード詳細
@@ -33,12 +40,15 @@
 | ノード名 | タイプ | 説明 |
 |----------|--------|------|
 | Schedule Trigger | scheduleTrigger | 定期実行 |
-| Get Active Feed Sources | supabase | `feed_sources`から`is_active=true`のレコードを取得 |
+| Get Feed Sources | supabase | `feed_sources`から`is_active=true`のレコードを取得 |
 | Loop Feed Sources | splitInBatches | フィードを1件ずつループ処理 |
 | Fetch RSS Feed | rssFeedRead | 各フィードのURLからRSSを取得 |
+| Is Valid Feed? | if | フィードが正常に取得できたか判定 |
+| Limit Articles | limit | 取得する記事数を制限 |
 | Add Feed Info | code | フィードソースIDを各記事に付与 |
 | Process RSS Articles (SubWF) | executeWorkflow | サブワークフローを呼び出し |
-| Notify Completion | - | 完了通知を送信 |
+| Notify Invalid Feed | slack | 無効なフィードをSlackに通知 |
+| Notify Completion | slack | 完了通知を送信（無効化中） |
 
 ---
 
@@ -220,9 +230,16 @@ return {
 - 「この記事では」「この記事は」「本記事では」などのメタ表現で始めない
 - 主語（企業名、サービス名、技術名など）から直接書き始める
 
+## キーワードのルール
+
+- 配列内の各キーワードは必ずダブルクオート（"）で囲むこと
+- 日本語のキーワードも必ずダブルクオートで囲むこと
+- 例: ["Claude Code", "CLAUDE.md", "コンテキスト", "プロジェクトルール"]
+
 ## 出力形式
 
 以下のJSON形式のみを出力してください。説明文やマークダウンの装飾は不要です。
+すべての文字列値は必ずダブルクオートで囲んでください。
 
 {
   "title": "日本語タイトル",
@@ -365,7 +382,7 @@ AI エージェントと外部 API の連携がクラウドレベルで整って
 ## エラーハンドリング
 
 ### Fetch RSS WF
-- **RSS取得失敗**: スキップして次のフィードへ
+- **RSS取得失敗（無効なフィード）**: Slackに通知してスキップ、次のフィードへ
 - **サブWF呼び出し失敗**: ログ出力
 
 ### Process RSS Articles WF
